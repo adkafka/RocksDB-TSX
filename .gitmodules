@@ -1,0 +1,6 @@
+[submodule "tsx-tools"]
+	path = tsx-tools
+	url = https://github.com/andikleen/tsx-tools
+[submodule "rocksdb"]
+	path = rocksdb
+	url = https://github.com/facebook/rocksdb
