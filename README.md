@@ -10,3 +10,31 @@ Adam Kafka and Ryan Santos
     - Open up log file, and wrap pthread\_create such that we log every call with where it came from
 
 - Run examples in rockDB and learn from lock usage. Maybe lock success/failures as well...
+
+
+## Notes
+### Compiling on 4pac1
+- Git clone the repository
+- Resolve the submodules ``git submodule update --init --recursive``
+- Run ``make all`` from the rocksdb repository
+
+
+- If missing dependencies:
+    Follow instructions from 'https://gist.github.com/achalddave/7f7323a36f85b6c6dd64'
+    - Compile RocksDB ``LDFLAGS="-L/home/adk216/local/lib" CFLAGS="-I/home/adk216/local/include" make``
+
+
+### Design considerations (Meeting with spear)
+- Capture all pthread mutex ops
+    - CondVars? - Richard Yoo paper 2013, Supercomputing
+        - One option, come back to this issue
+        - Use semaphores as commiting, then wait on them, start a new transaction on wait
+    - Lock elision
+        - Deal with all locks as one, or each lock independently. Library for each
+    - Identify the critical sections
+        - Program traces, performance logging
+    - Conflict reduction strats
+        - Try again or grab lock
+        - Hourglass... PhD student. Stop new transactions, dont kill current ones
+- Challenge: performance predicability
+- Difficult to log, causes aborts. May be hard to debug why a transaction is aborting
