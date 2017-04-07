@@ -1,4 +1,12 @@
+CXX = g++
+CFLAGS = -std=c++14 -Wall -g
+LDFLAGS = -lunwind -L/lib/x86_64-linux-gnu/liblzma.so.5 
+
+
 all: backtrace
 
 backtrace: backtrace.cpp
-	g++ -g backtrace.cpp -std=c++14 -lunwind -L/lib/x86_64-linux-gnu/liblzma.so.5 -o backtrace
+	g++ $< $(CFLAGS) $(LDFLAGS) -o $@
+
+clean:
+	rm backtrace
