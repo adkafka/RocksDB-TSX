@@ -1,16 +1,24 @@
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdint.h>
 #include <bits/pthreadtypes.h>
-#include <pthread.h>
 #include <dlfcn.h>
+
+
+__attribute__((constructor)) void init(void) { 
+    fprintf(stderr, "Loaded pthread interpositioning library\n");
+}
+__attribute__((destructor))  void fini(void) { 
+    fprintf(stderr, "Unloaded pthread interpositioning library\n");
+}
+
 
 void store_id(pthread_t  * id) {
     fprintf(stderr, "new thread created with id  0x%lx\n", (*id));
 }
 
 #undef pthread_create
-
 int pthread_create(pthread_t * thread, pthread_attr_t * attr, void * (*start)(void *), void * arg)
 {
     int rc;
