@@ -1,0 +1,29 @@
+                 U pthread_cond_broadcast
+                 U pthread_cond_destroy
+                 U pthread_cond_init
+                 U pthread_cond_signal
+                 U pthread_cond_timedwait
+                 U pthread_mutexattr_destroy
+                 U pthread_mutexattr_init
+                 U pthread_mutexattr_settype
+                 U pthread_mutex_destroy
+                 U pthread_mutex_init
+                 U pthread_mutex_lock
+                 w pthread_mutex_trylock
+                 U pthread_mutex_unlock
+                 U pthread_rwlock_destroy
+                 U pthread_rwlock_init
+                 U pthread_rwlock_rdlock
+                 U pthread_rwlock_unlock
+                 U pthread_rwlock_wrlock
+
+                 w sched_yield
+
+                 U std::condition_variable::notify_all()
+                 U std::condition_variable::notify_one()
+                 U std::condition_variable::wait(std::unique_lock<std::mutex>&)
+                 U std::condition_variable::condition_variable()
+                 U std::condition_variable::~condition_variable()
+
+                 U std::__atomic_futex_unsigned_base::_M_futex_notify_all(unsigned int*)
+                 U std::__atomic_futex_unsigned_base::_M_futex_wait_until(unsigned int*, unsigned int, bool, std::chrono::duration<long, std::ratio<1l, 1l> >, std::chrono::duration<long, std::ratio<1l, 1000000000l> >)
