@@ -2,8 +2,6 @@
 #include <stdio.h>
 
 
-#include "backtrace.h"
-
 /* this function is run by the second thread */
 void *inc_x(void *x_void_ptr)
 {
@@ -19,6 +17,7 @@ void *inc_x(void *x_void_ptr)
 
 }
 
+pthread_mutex_t mutex1;
 int main()
 {
 
@@ -26,7 +25,7 @@ int main()
 
     /* show the initial values of x and y */
     printf("x: %d, y: %d\n", x, y);
-    my_backtrace();	
+    
     /* this variable is our reference to the second thread */
     pthread_t inc_x_thread;
 
@@ -53,6 +52,7 @@ int main()
     /* show the results - x is now 100 thanks to the second thread */
     printf("x: %d, y: %d\n", x, y);
 
+	int z = pthread_mutex_init(&mutex1,NULL);
     return 0;
 
 }

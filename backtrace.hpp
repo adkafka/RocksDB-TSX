@@ -12,9 +12,6 @@
 #include <string>
 #include <libunwind.h>
 
-#include "backtrace.h"
-
-
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;
@@ -27,7 +24,7 @@ std::string exec(const char* cmd) {
     return result;
 }
 
-extern "C" void my_backtrace() {
+void backtrace() {
     unw_cursor_t cursor;
     unw_context_t context;
 
@@ -51,7 +48,7 @@ extern "C" void my_backtrace() {
 
         /* Use 'addr2line' to get the function name, file, and line number */
         cmd.str("");
-        cmd << "addr2line -C -e " << "backtrace " << "-f -i 0x";
+        cmd << "addr2line -C -e " << "pthread_test " << "-f -i 0x";
         cmd << std::hex << pc;
 
         output = exec(cmd.str().c_str());
@@ -64,31 +61,4 @@ extern "C" void my_backtrace() {
 
         cur_frame++;
     }
-}
-
-
-
-
-namespace ns {
-
-    template <typename T, typename U>
-        void foo(T t, U u) {
-            my_backtrace(); // <-------- backtrace here!
-        }
-
-}  // namespace ns
-
-template <typename T>
-struct Klass {
-    T t;
-    void bar() {
-        ns::foo(t, true);
-    }
-};
-
-int main(int argc, char** argv) {
-    Klass<double> k;
-    k.bar();
-
-    return 0;
 }

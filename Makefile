@@ -6,22 +6,16 @@ LDFLAGS = -lunwind -L/lib/x86_64-linux-gnu/liblzma.so.5
 PTHREAD_LIBNAME = libmypthread.so
 
 
-all: backtrace pthread_test
+all: test
 
-backtrace: backtrace.o 
-	$(CXX) backtrace.o -o $@
+pthread_test: pthread_test.c
+	# works with g++ or gcc
+	$(CXX) $(CFLAGS) $< -o pthread_test -lpthread
+pthread_lib: backtrace.hpp pthread_interpose.c
+	$(CXX) -shared -fPIC $^ $(CFLAGS) -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS)
 
-backtrace.o: backtrace.cpp backtrace.h 
-	$(CXX) $< $(CFLAGS) $(LDFLAGS) backtrace.cpp
-
-pthread_test: pthread_test.o
-	$(CC) -o pthread_test -lpthread
-
-pthread_test.o: pthread_test.c
-	$(CC) $< $(LDFLAGS) pthread_test.c
-
-pthread_lib: pthread_interpose.c
-	$(CC) -shared -fPIC $< -o $(PTHREAD_LIBNAME) -ldl
+test: pthread_lib pthread_test
+	LD_PRELOAD="$(HOME)/RocksDB-TSX/$(PTHREAD_LIBNAME)" ./pthread_test
 
 $(PTHREAD_LIBNAME): pthread_lib
 
@@ -44,4 +38,4 @@ log: $(PTHREAD_LIBNAME)
 			   --benchmarks=filluniquerandom --use_existing_db=0 --num=524288000 --threads=2
 
 clean:
-	rm backtrace $(PTHREAD_LIBNAME)
+	rm $(PTHREAD_LIBNAME) pthread_test

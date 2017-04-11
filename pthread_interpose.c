@@ -1,10 +1,13 @@
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdint.h>
 #include <bits/pthreadtypes.h>
 #include <dlfcn.h>
 
+#include <cstring>
+
+#include "backtrace.hpp"
+
+extern "C" {
 
 __attribute__((constructor)) void init(void) { 
     fprintf(stderr, "Loaded pthread interpositioning library\n");
@@ -18,17 +21,24 @@ void store_id(pthread_t  * id) {
     fprintf(stderr, "new thread created with id  0x%lx\n", (*id));
 }
 
-#undef pthread_create
-int pthread_create(pthread_t * thread, pthread_attr_t * attr, void * (*start)(void *), void * arg)
+#undef pthread_mutex_init
+int pthread_mutex_init(pthread_mutex_t * mutex, const pthread_mutexattr_t *mutexattr){
 {
     int rc;
-    static int (*real_create)(pthread_t * , pthread_attr_t *, void * (*start)(void *), void *) = NULL;
-    if (!real_create)
-        real_create = dlsym(RTLD_NEXT, "pthread_create");
+    static int (*real_create)(pthread_mutex_t * mutexx, const pthread_mutexattr_t *mutexattr);
 
-    rc = real_create(thread, attr, start, arg);
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "pthread_mutex_init")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    rc = real_create(mutex, mutexattr);
     if(!rc) {
-        store_id(thread);
+        //store_id(thread);
+    //    backtrace();
     }
     return rc;
 }
+}
+}
+
