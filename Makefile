@@ -6,13 +6,20 @@ LDFLAGS = -lunwind -L/lib/x86_64-linux-gnu/liblzma.so.5
 PTHREAD_LIBNAME = libmypthread.so
 
 
-all: backtrace
+all: backtrace pthread_test
 
-backtrace: backtrace.cpp
-	$(CXX) $< $(CFLAGS) $(LDFLAGS) -o $@
+backtrace: backtrace.o 
+	$(CXX) backtrace.o -o $@
 
-pthread_test: pthread_test.c
-	$(CC) $< -o pthread_test -lpthread
+backtrace.o: backtrace.cpp backtrace.h 
+	$(CXX) $< $(CFLAGS) $(LDFLAGS) backtrace.cpp
+
+pthread_test: pthread_test.o
+	$(CC) -o pthread_test -lpthread
+
+pthread_test.o: pthread_test.c
+	$(CC) $< $(LDFLAGS) pthread_test.c
+
 pthread_lib: pthread_interpose.c
 	$(CC) -shared -fPIC $< -o $(PTHREAD_LIBNAME) -ldl
 

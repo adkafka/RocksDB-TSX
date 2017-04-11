@@ -12,6 +12,8 @@
 #include <string>
 #include <libunwind.h>
 
+#include "backtrace.h"
+
 
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
@@ -25,7 +27,7 @@ std::string exec(const char* cmd) {
     return result;
 }
 
-void backtrace() {
+extern "C" void my_backtrace() {
     unw_cursor_t cursor;
     unw_context_t context;
 
@@ -71,7 +73,7 @@ namespace ns {
 
     template <typename T, typename U>
         void foo(T t, U u) {
-            backtrace(); // <-------- backtrace here!
+            my_backtrace(); // <-------- backtrace here!
         }
 
 }  // namespace ns

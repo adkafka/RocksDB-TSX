@@ -1,6 +1,9 @@
 #include <pthread.h>
 #include <stdio.h>
 
+
+#include "backtrace.h"
+
 /* this function is run by the second thread */
 void *inc_x(void *x_void_ptr)
 {
@@ -23,7 +26,7 @@ int main()
 
     /* show the initial values of x and y */
     printf("x: %d, y: %d\n", x, y);
-
+    my_backtrace();	
     /* this variable is our reference to the second thread */
     pthread_t inc_x_thread;
 
