@@ -24,7 +24,42 @@ std::string exec(const char* cmd) {
     return result;
 }
 
-void backtrace() {
+void backtrace(){
+    void *trace[16];
+    char **messages = (char **)NULL;
+    int i, trace_size = 0;
+    std::ostringstream cmd;
+    std::stringstream out;
+    std::string output,func,loc;
+
+
+    trace_size = backtrace(trace, 16);
+    messages = backtrace_symbols(trace, trace_size);
+    for (i=0; i<trace_size; ++i)
+    {
+        /* find first occurence of '(' or ' ' in message[i] and assume
+         *      * everything before that is the file name. (Don't go beyond 0 though
+         *           * (string terminator)*/
+        size_t p = 0;
+        while(messages[i][p] != '(' && messages[i][p] != ' '
+                && messages[i][p] != 0)
+            ++p;
+
+        cmd.str("");
+        cmd << "LD_PRELOAD=\"\" addr2line -C -e " << "pthread_test " << "-f -i ";
+        cmd << std::hex << trace[i];
+
+        output = exec(cmd.str().c_str());
+        out = std::stringstream(output);
+        std::getline(out,func,'\n');
+        std::getline(out,loc,'\n');
+
+        std::cout << "(" << i << ")\n";
+        std::cout << loc << " [" << func << "]" << std::endl;
+    }
+}
+
+void backtrace_bad() {
     unw_cursor_t cursor;
     unw_context_t context;
 
