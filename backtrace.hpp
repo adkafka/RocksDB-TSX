@@ -49,7 +49,7 @@ void backtrace() {
 
         /* Use 'addr2line' to get the function name, file, and line number */
         cmd.str("");
-        cmd << "addr2line -C -e " << "backtrace " << "-f -i 0x";
+        cmd << "addr2line -C -e " << "pthread_test " << "-f -i 0x";
         cmd << std::hex << pc;
 
         output = exec(cmd.str().c_str());
@@ -62,31 +62,4 @@ void backtrace() {
 
         cur_frame++;
     }
-}
-
-
-
-
-namespace ns {
-
-    template <typename T, typename U>
-        void foo(T t, U u) {
-            backtrace(); // <-------- backtrace here!
-        }
-
-}  // namespace ns
-
-template <typename T>
-struct Klass {
-    T t;
-    void bar() {
-        ns::foo(t, true);
-    }
-};
-
-int main(int argc, char** argv) {
-    Klass<double> k;
-    k.bar();
-
-    return 0;
 }
