@@ -8,9 +8,6 @@ PTHREAD_LIBNAME = libmypthread.so
 
 all: test
 
-backtrace.o: backtrace.hpp
-	$(CXX) $^ $(CFLAGS) -o $@
-
 pthread_test: pthread_test.c
 	# works with g++ or gcc
 	$(CXX) $< -o pthread_test -lpthread
@@ -41,4 +38,4 @@ log: $(PTHREAD_LIBNAME)
 			   --benchmarks=filluniquerandom --use_existing_db=0 --num=524288000 --threads=2
 
 clean:
-	rm backtrace $(PTHREAD_LIBNAME)
+	rm $(PTHREAD_LIBNAME) pthread_test
