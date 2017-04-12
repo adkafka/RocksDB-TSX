@@ -9,7 +9,6 @@
 #include "backtrace.hpp"
 
 #define LOG_FILE "mutex_usage.log"
-#define EXEC_PATH "pthread_test"
 
 
 extern "C" {
