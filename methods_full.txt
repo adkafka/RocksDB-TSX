@@ -3,6 +3,7 @@
                  U pthread_cond_init
                  U pthread_cond_signal
                  U pthread_cond_timedwait
+                 U pthread_cond_wait
                  U pthread_mutexattr_destroy
                  U pthread_mutexattr_init
                  U pthread_mutexattr_settype
@@ -19,11 +20,13 @@
 
                  w sched_yield
 
+                 U std::condition_variable::condition_variable()
+                 U std::condition_variable::~condition_variable()
                  U std::condition_variable::notify_all()
                  U std::condition_variable::notify_one()
                  U std::condition_variable::wait(std::unique_lock<std::mutex>&)
-                 U std::condition_variable::condition_variable()
-                 U std::condition_variable::~condition_variable()
+0000000000595ac0 W std::unique_lock<rocksdb::SpinMutex>::unlock()
+00000000004b71a0 W std::unique_lock<std::mutex>::unlock()
 
                  U std::__atomic_futex_unsigned_base::_M_futex_notify_all(unsigned int*)
                  U std::__atomic_futex_unsigned_base::_M_futex_wait_until(unsigned int*, unsigned int, bool, std::chrono::duration<long, std::ratio<1l, 1l> >, std::chrono::duration<long, std::ratio<1l, 1000000000l> >)
