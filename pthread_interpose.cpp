@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <bits/pthreadtypes.h> //get param types
 #include <dlfcn.h> //dlsym
+#include <stdarg.h> //va_list...
 
 #include <cstring> //memcpy
 #include <fstream> //file writing
@@ -32,13 +33,16 @@ __attribute__((destructor))  void fini(void) {
 // Prevent backtrace from calling backtrace again
 thread_local bool use_real_func = false;
 
-
-void log_func(const char* func_name){
+void log_func(const char* func_name, const char * format="", ...){
     // If we should use real func, no op
     if(use_real_func==false){
         if(!ofs) init();
         use_real_func = true;
-        (*ofs) << "(0) " << func_name << "\n";
+        char buffer[256];
+        va_list args;
+        va_start(args,format);
+        vsnprintf(buffer,256,format,args);
+        (*ofs) << "(0) " << func_name << " " << buffer << "\n";
         backtrace(ofs);
         (*ofs) <<"\n";
         use_real_func = false;
@@ -70,7 +74,7 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
     }
 
     rc = real_create(mutex);
-    log_func("pthread_mutex_lock");
+    log_func("pthread_mutex_lock", "addr: %p, ret: %d",mutex,rc);
     return rc;
 }
 
@@ -112,7 +116,7 @@ int pthread_mutex_unlock(pthread_mutex_t * mutex){
     }
 
     rc = real_create(mutex);
-    log_func("pthread_mutex_unlock");
+    log_func("pthread_mutex_unlock", "addr: %p, ret: %d",mutex,rc);
     return rc;
 }
 

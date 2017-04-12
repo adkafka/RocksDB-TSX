@@ -41,12 +41,13 @@ void backtrace(std::ofstream *ofs){
         cmd << "LD_PRELOAD=\"\" addr2line -C -e " << EXEC_PATH << " -f -i ";
         cmd << std::hex << trace[i];
 
-        output = exec(cmd.str().c_str());
+        //output = exec(cmd.str().c_str());
         out = std::stringstream(output);
         std::getline(out,func,'\n');
         std::getline(out,loc,'\n');
 
         (*ofs) << "(" << i-1 << ") ";
-        (*ofs) << loc << " [" << func << "]" << std::endl;
+        (*ofs) << cmd.str() << "\n";
+        //(*ofs) << loc << " [" << func << "]" << std::endl;
     }
 }
