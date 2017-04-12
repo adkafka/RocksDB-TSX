@@ -10,7 +10,7 @@
 #include <string>
 
 #ifndef EXEC_PATH
-#define EXEC_PATH "pthread_test"
+#define EXEC_PATH "rocksdb/db_bench"
 #endif
 
 std::string exec(const char* cmd) {
@@ -19,8 +19,9 @@ std::string exec(const char* cmd) {
     std::shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
     if (!pipe) throw std::runtime_error("popen() failed!");
     while (!feof(pipe.get())) {
-        if (fgets(buffer.data(), 128, pipe.get()) != NULL)
+        if (fgets(buffer.data(), 128, pipe.get()) != NULL){
             result += buffer.data();
+        }
     }
     return result;
 }
