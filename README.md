@@ -11,6 +11,11 @@ Adam Kafka and Ryan Santos
 
 - Run examples in rockDB and learn from lock usage. Maybe lock success/failures as well...
 
+## Gathering the functions
+We used ``nm -D -C db_bench`` to get a list of all dynamicly resolved functions that RocksDB uses in its benchmark. We then manually went through and removed the functions that had no obvious relation to concurency. We than also ran ``nm -C db_bench | grep KEYWORD``, where KEYWORD was a concurrency programming keyword, such as mutex, condition, lock, etc. The list of these functions can be found in 'methods\_full.txt'.
+
+Note, db\_bench uses unique\_lock (and other funcs) that ARE NOT dynamically linked to the binary. Thus, we cannot interposition on these funcs.
+
 
 ## Notes
 ### Compiling on 4pac1
