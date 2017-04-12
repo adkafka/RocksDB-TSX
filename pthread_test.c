@@ -20,10 +20,8 @@ void *inc_x(void *x_void_ptr)
 pthread_mutex_t mutex1;
 int main()
 {
-
-    printf("Before mutex_init\n");
-	int z = pthread_mutex_init(&mutex1,NULL);
-    printf("After mutex_init\n");
+    int z = pthread_mutex_init(&mutex1,NULL);
+    pthread_mutex_lock(&mutex1);
+    pthread_mutex_unlock(&mutex1);
     return 0;
-
 }
