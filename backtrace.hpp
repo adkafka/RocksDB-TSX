@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstdlib> 
 #include <execinfo.h> //backtrace
-#include <iostream> //cout...
+#include <fstream> //file writing
 #include <memory> //shared_ptr
 #include <sstream>
 #include <string>
@@ -21,7 +21,7 @@ std::string exec(const char* cmd) {
     return result;
 }
 
-void backtrace(){
+void backtrace(std::ofstream *ofs){
     void *trace[16];
     int i, trace_size = 0;
     std::ostringstream cmd;
@@ -30,7 +30,8 @@ void backtrace(){
 
 
     trace_size = backtrace(trace, 16);
-    for (i=0; i<trace_size; ++i) {
+    // Ignore first two frames (interpose func and this bt)
+    for (i=2; i<trace_size; ++i) {
         cmd.str("");
         cmd << "LD_PRELOAD=\"\" addr2line -C -e " << "pthread_test " << "-f -i ";
         cmd << std::hex << trace[i];
@@ -40,7 +41,7 @@ void backtrace(){
         std::getline(out,func,'\n');
         std::getline(out,loc,'\n');
 
-        std::cout << "(" << i << ")\n";
-        std::cout << loc << " [" << func << "]" << std::endl;
+        (*ofs) << "(" << i-1 << ") ";
+        (*ofs) << loc << " [" << func << "]" << std::endl;
     }
 }

@@ -4,6 +4,7 @@ CC = gcc
 CFLAGS = -std=c++14 -Wall -g -O0
 LDFLAGS = -lunwind -L/lib/x86_64-linux-gnu/liblzma.so.5 
 PTHREAD_LIBNAME = libmypthread.so
+LOG_FILE = mutex_usage.log
 
 
 all: test
@@ -15,7 +16,9 @@ pthread_lib: backtrace.hpp pthread_interpose.c
 	$(CXX) -shared -fPIC $^ $(CFLAGS) -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS)
 
 test: pthread_lib pthread_test
+	cat /dev/null > $(LOG_FILE)
 	LD_PRELOAD="$(HOME)/RocksDB-TSX/$(PTHREAD_LIBNAME)" ./pthread_test
+	cat $(LOG_FILE)
 
 $(PTHREAD_LIBNAME): pthread_lib
 

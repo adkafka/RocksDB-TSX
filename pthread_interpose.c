@@ -1,20 +1,32 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <bits/pthreadtypes.h>
-#include <dlfcn.h>
+#include <bits/pthreadtypes.h> //get param types
+#include <dlfcn.h> //dlsym
 
-#include <cstring>
+#include <cstring> //memcpy
+#include <fstream> //file writing
 
 #include "backtrace.hpp"
 
+#define LOG_FILE "mutex_usage.log"
+#define EXEC_PATH "pthread_test"
+
+
 extern "C" {
 
+static std::ofstream* ofs;
+
 __attribute__((constructor)) void init(void) { 
-    //fprintf(stderr, "Loaded pthread interpositioning library\n");
+    ofs = new std::ofstream();
+    ofs->open(LOG_FILE, std::ofstream::out | std::ofstream::app);
 }
 __attribute__((destructor))  void fini(void) { 
-    //fprintf(stderr, "Unloaded pthread interpositioning library\n");
+    ofs->close();
+    delete ofs;
 }
+
+// Prevent backtrace from calling backtrace again
+thread_local bool use_real_func = false;
 
 #undef pthread_mutex_init 
 int pthread_mutex_init(pthread_mutex_t * mutex, const pthread_mutexattr_t *mutexattr){
@@ -26,8 +38,13 @@ int pthread_mutex_init(pthread_mutex_t * mutex, const pthread_mutexattr_t *mutex
     }
 
     rc = real_create(mutex, mutexattr);
-    if(!rc)
-        backtrace();
+    if(!rc && !use_real_func){
+        use_real_func = true;
+        (*ofs) << "(0) pthread_mutex_init\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+        use_real_func = false;
+    }
     return rc;
 }
 
@@ -41,8 +58,13 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
     }
 
     rc = real_create(mutex);
-    if(!rc)
-        backtrace();
+    if(!rc && !use_real_func){
+        use_real_func = true;
+        (*ofs) << "(0) pthread_mutex_lock\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+        use_real_func = false;
+    }
     return rc;
 }
 
@@ -56,8 +78,11 @@ int pthread_mutex_trylock(pthread_mutex_t * mutex){
     }
 
     rc = real_create(mutex);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_mutex_trylock\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -71,8 +96,11 @@ int pthread_mutex_timedlock(pthread_mutex_t * mutex, const struct timespec *abs_
     }
 
     rc = real_create(mutex,abs_timeout);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_mutex_timedlock\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -86,8 +114,13 @@ int pthread_mutex_unlock(pthread_mutex_t * mutex){
     }
 
     rc = real_create(mutex);
-    if(!rc)
-        backtrace();
+    if(!rc && !use_real_func){
+        use_real_func = true;
+        (*ofs) << "(0) pthread_mutex_unlock\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+        use_real_func = false;
+    }
     return rc;
 }
 
@@ -101,8 +134,11 @@ int pthread_mutex_consistent(pthread_mutex_t * mutex){
     }
 
     rc = real_create(mutex);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_mutex_consistent\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -116,8 +152,11 @@ int pthread_mutex_destroy(pthread_mutex_t * mutex){
     }
 
     rc = real_create(mutex);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_mutex_destroy\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -133,8 +172,11 @@ int pthread_mutexattr_destroy(pthread_mutexattr_t * mutexattr){
     }
 
     rc = real_create(mutexattr);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) #\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -148,8 +190,11 @@ int pthread_mutexattr_init(pthread_mutexattr_t * mutexattr){
     }
 
     rc = real_create(mutexattr);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_mutexattr_init\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -163,8 +208,11 @@ int pthread_mutex_settype(pthread_mutexattr_t * mutexattr){
     }
 
     rc = real_create(mutexattr);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_mutex_settype\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -178,8 +226,11 @@ int pthread_cond_braodcast(pthread_cond_t * cond){
     }
 
     rc = real_create(cond);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_cond_braodcast\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -193,8 +244,11 @@ int pthread_cond_destroy(pthread_cond_t * cond){
     }
 
     rc = real_create(cond);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_cond_destroy\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -208,8 +262,11 @@ int pthread_cond_init(pthread_cond_t * __restrict cond, const pthread_condattr_t
     }
 
     rc = real_create(cond,attr);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_cond_init\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -223,8 +280,11 @@ int pthread_cond_signal(pthread_cond_t * cond){
     }
 
     rc = real_create(cond);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_cond_signal\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -240,8 +300,11 @@ int pthread_cond_timedwait(pthread_cond_t * __restrict cond, pthread_mutex_t * _
     }
 
     rc = real_create(cond,mutex,time);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_cond_timedwait\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -255,8 +318,11 @@ int pthread_rwlock_destroy(pthread_rwlock_t * rwlock){
     }
 
     rc = real_create(rwlock);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_rwlock_destroy\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -270,8 +336,11 @@ int pthread_rwlock_init(pthread_rwlock_t * __restrict rwlock, const pthread_rwlo
     }
 
     rc = real_create(rwlock, rwattr);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_rwlock_init\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -285,8 +354,11 @@ int pthread_rwlock_rdlock(pthread_rwlock_t * rwlock){
     }
 
     rc = real_create(rwlock);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_rwlock_rdlock\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -300,8 +372,11 @@ int pthread_rwlock_unlock(pthread_rwlock_t * rwlock){
     }
 
     rc = real_create(rwlock);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_rwlock_unlock\n";
+        backtrace(ofs);
+        (*ofs) << "\n";
+    }
     return rc;
 }
 
@@ -315,7 +390,12 @@ int pthread_rwlock_wrlock(pthread_rwlock_t * rwlock){
     }
 
     rc = real_create(rwlock);
-    if(!rc)
-        backtrace();
+    if(!rc){
+        (*ofs) << "(0) pthread_rwlock_wrlock\n";
+        backtrace(ofs);
+        (*ofs) <<"\n";
+    }
     return rc;
 }
+
+}// End external C
