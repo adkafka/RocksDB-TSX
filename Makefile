@@ -12,7 +12,7 @@ all: test
 pthread_test: pthread_test.c
 	# works with g++ or gcc
 	$(CXX) $(CFLAGS) $< -o pthread_test -lpthread
-pthread_lib: backtrace.hpp pthread_interpose.c
+pthread_lib: backtrace.hpp pthread_interpose.cpp
 	$(CXX) -shared -fPIC $^ $(CFLAGS) -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS)
 
 test: pthread_lib pthread_test
