@@ -1,12 +1,14 @@
 #include <stdio.h>
+#include <iostream>
 #include <stdint.h>
+#include <condition_variable>
+#include <thread>
 #include <bits/pthreadtypes.h> //get param types
 #include <dlfcn.h> //dlsym
 #include <stdarg.h> //va_list...
 
 #include <cstring> //memcpy
 #include <fstream> //file writing
-
 #include "backtrace.hpp"
 
 #define LOG_FILE "mutex_usage.log"
@@ -332,4 +334,62 @@ int pthread_rwlock_wrlock(pthread_rwlock_t * rwlock){
     return rc;
 }
 
+/*#undef condition_variable 
+std::condition_variable::condition_variable(){
+    static void (*real_create)();
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "condition_variable")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    real_create();
+    log_func("condition_variable");
+}*/
+/*
+#undef ~condition_variable 
+void ~condition_variable(){
+    static int (*real_create)();
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "~condition_variable")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    real_create();
+    log_func("~condition_variable");
+}*/
+
+#undef notify_all 
+void std::condition_variable::notify_all(){
+    static int (*real_create)();
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "notify_all")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    real_create();
+    log_func("notify_all");
+}
+
+/*#undef notify_one 
+void std::condition_variable::notify_one(){
+    static void (*real_create)();
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "notify_one")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+    real_create();
+    log_func("notify_one");
+}*/
+
+#undef wait 
+void std::condition_variable::wait(std::unique_lock<std::mutex>& cv_m){
+    static int (*real_create)(std::unique_lock<std::mutex>& cv_m);
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "wait")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    real_create(cv_m);
+    log_func("wait");
+}
 }// End external C
