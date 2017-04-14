@@ -370,7 +370,7 @@ void std::condition_variable::notify_all(){
     log_func("notify_all");
 }
 
-/*#undef notify_one 
+#undef notify_one 
 void std::condition_variable::notify_one(){
     static void (*real_create)();
     if (!real_create){
@@ -379,7 +379,7 @@ void std::condition_variable::notify_one(){
     }
     real_create();
     log_func("notify_one");
-}*/
+}
 
 #undef wait 
 void std::condition_variable::wait(std::unique_lock<std::mutex>& cv_m){
