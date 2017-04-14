@@ -12,12 +12,19 @@ all: test
 pthread_test: pthread_test.c
 	# works with g++ or gcc
 	$(CXX) $(CFLAGS) $< -o pthread_test -lpthread
+pthread_test_cpp: pthread_test.cpp
+	$(CXX) $(CFLAGS) $< -o pthread_test_cpp -lpthread
 pthread_lib: backtrace.hpp pthread_interpose.cpp
 	$(CXX) -shared -fPIC $^ $(CFLAGS) -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS)
 
-test: pthread_lib pthread_test
+test: pthread_lib pthread_test 
 	cat /dev/null > $(LOG_FILE)
 	LD_PRELOAD="$(HOME)/RocksDB-TSX/$(PTHREAD_LIBNAME)" ./pthread_test
+	cat $(LOG_FILE)
+
+test_cpp: pthread_lib pthread_test_cpp 
+	cat /dev/null > $(LOG_FILE)
+	LD_PRELOAD="$(HOME)/RocksDB-TSX/$(PTHREAD_LIBNAME)" ./pthread_test_cpp
 	cat $(LOG_FILE)
 
 $(PTHREAD_LIBNAME): pthread_lib
