@@ -21,6 +21,16 @@ Note, db\_bench uses unique\_lock (and other funcs) that ARE NOT dynamically lin
 ### Compiling on 4pac1
 - Git clone the repository
 - Resolve the submodules ``git submodule update --init --recursive``
+- Compile libjunction dependency:
+    ```
+$ cd junction
+$ mkdir build
+$ cd build
+$ mkdir install # Where the headers and libs will be sent
+$ cmake -DCMAKE_INSTALL_PREFIX=install ..
+$ make install
+$ cd ../../
+    ```
 - Run ``make all`` from the rocksdb repository
 
 
