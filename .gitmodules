@@ -7,3 +7,6 @@
 [submodule "junction"]
 	path = junction
 	url = git@github.com:preshing/junction.git
+[submodule "turf"]
+	path = turf
+	url = git@github.com:preshing/turf.git
