@@ -6,7 +6,7 @@
 	url = https://github.com/facebook/rocksdb
 [submodule "junction"]
 	path = junction
-	url = git@github.com:preshing/junction.git
+	url = https://github.com/preshing/junction.git 
 [submodule "turf"]
 	path = turf
-	url = git@github.com:preshing/turf.git
+	url = https://github.com/preshing/turf.git
