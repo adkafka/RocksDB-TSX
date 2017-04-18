@@ -24,7 +24,7 @@ void signals(){
 	std::cout << "after notify\n";	
 	std::unique_lock<std::mutex> lk(m);
 	i=1;
-	std::cout << "we are" << ready;
+	std::cout << "we are " << ready << std::endl;
 	while(!ready){
 		std::cout << "Notifying true change. \n";
 		lk.unlock();
