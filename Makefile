@@ -17,10 +17,10 @@ pthread_test: pthread_test.c
 pthread_test_cpp: pthread_test.cpp
 	$(CXX) $(CFLAGS) $< -o pthread_test_cpp -lpthread
 pthread_lib: backtrace.hpp pthread_interpose.cpp
-	$(CXX) -shared -fPIC $^ $(CFLAGS) -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS)
+	$(CXX) -shared -fPIC -Wunused-value $(CFLAGS) $^ -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS) $(JUNCTION_DEPS) $(JUNCTION_TURF_LD) 
 
 junction_test: junction_test.cpp
-	g++ $(CFLAGS) $< -o junction_test $(JUNCTION_DEPS) $(TURF_DEPS) $(JUNCTION_TURF_LD) 
+	g++ $(CFLAGS) $< -o junction_test $(JUNCTION_DEPS) $(JUNCTION_TURF_LD) 
 
 test: pthread_lib pthread_test 
 	cat /dev/null > $(LOG_FILE)

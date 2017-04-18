@@ -9,6 +9,10 @@
 
 #include <cstring> //memcpy
 #include <fstream> //file writing
+#include <junction/Core.h> //For Junction Hash Map
+#include <turf/Heap.h>
+#include <junction/extra/MapAdapter.h>
+
 #include "backtrace.hpp"
 
 #define LOG_FILE "mutex_usage.log"
@@ -18,6 +22,10 @@ extern "C" {
 
 static std::ofstream* ofs;
 
+junction::extra::MapAdapter *adapter;
+junction::extra::MapAdapter::ThreadContext *context;
+junction::extra::MapAdapter::Map *map;
+
 __attribute__((constructor)) void init(void) { 
     ofs = new std::ofstream();
     if(ofs==NULL){
@@ -26,7 +34,13 @@ __attribute__((constructor)) void init(void) {
     }
     ofs->open(LOG_FILE, std::ofstream::out | std::ofstream::app);
     printf("ofs: %p\n",ofs);
+
+   //initializes Hash Map 
+   adapter = new junction::extra::MapAdapter(1);
+   context = new junction::extra::MapAdapter::ThreadContext(*adapter,0);
+   map = new junction::extra::MapAdapter::Map(65536); 
 }
+
 __attribute__((destructor))  void fini(void) { 
     ofs->close();
     delete ofs;
