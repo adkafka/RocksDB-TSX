@@ -17,7 +17,7 @@ pthread_test: pthread_test.c
 pthread_test_cpp: pthread_test.cpp
 	$(CXX) $(CFLAGS) $< -o pthread_test_cpp -lpthread
 pthread_lib: backtrace.hpp pthread_interpose.cpp
-	$(CXX) -shared -fPIC -Wunused-value $(CFLAGS) $^ -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS) $(JUNCTION_DEPS) $(JUNCTION_TURF_LD) 
+	$(CXX) -shared -fPIC $(CFLAGS) -Wno-unused-value $^ -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS) $(JUNCTION_DEPS) $(JUNCTION_TURF_LD) 
 
 junction_test: junction_test.cpp
 	g++ $(CFLAGS) $< -o junction_test $(JUNCTION_DEPS) $(JUNCTION_TURF_LD) 
@@ -71,4 +71,4 @@ no_interpose:
 			   --benchmarks=filluniquerandom --use_existing_db=0 --num=1000 --threads=2
 
 clean:
-	rm $(PTHREAD_LIBNAME) pthread_test
+	rm $(PTHREAD_LIBNAME) pthread_test junction_test
