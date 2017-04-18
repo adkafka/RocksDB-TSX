@@ -6,6 +6,8 @@ LDFLAGS = -lunwind -L/lib/x86_64-linux-gnu/liblzma.so.5
 PTHREAD_LIBNAME = libmypthread.so
 LOG_FILE = mutex_usage.log
 
+JUNCTION_DEPS = -I junction/build/install/include/
+JUNCTION_TURF_LD = -pthread -L junction/build/install/lib/ -l junction -l turf
 
 all: test
 
@@ -16,6 +18,9 @@ pthread_test_cpp: pthread_test.cpp
 	$(CXX) $(CFLAGS) $< -o pthread_test_cpp -lpthread
 pthread_lib: backtrace.hpp pthread_interpose.cpp
 	$(CXX) -shared -fPIC $^ $(CFLAGS) -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS)
+
+junction_test: junction_test.cpp
+	g++ $(CFLAGS) $< -o junction_test $(JUNCTION_DEPS) $(TURF_DEPS) $(JUNCTION_TURF_LD) 
 
 test: pthread_lib pthread_test 
 	cat /dev/null > $(LOG_FILE)
