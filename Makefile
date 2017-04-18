@@ -7,7 +7,9 @@ PTHREAD_LIBNAME = libmypthread.so
 LOG_FILE = mutex_usage.log
 
 JUNCTION_DEPS = -I junction/build/install/include/
-JUNCTION_TURF_LD = -pthread -L junction/build/install/lib/ -l junction -l turf
+JUNCTION_LIBS = junction/build/install/lib/
+JUNCTION_TURF_LD = -pthread -L $(JUNCTION_LIBS) -l junction -l turf
+
 
 all: test
 
@@ -20,7 +22,7 @@ pthread_lib: backtrace.hpp pthread_interpose.cpp
 	$(CXX) -shared -fPIC $(CFLAGS) -Wno-unused-value $^ -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS) $(JUNCTION_DEPS) $(JUNCTION_TURF_LD) 
 
 junction_test: junction_test.cpp
-	g++ $(CFLAGS) $< -o junction_test $(JUNCTION_DEPS) $(JUNCTION_TURF_LD) 
+	$(CXX) $(CFLAGS) -Wno-unused-value -Wno-unused-variable $< -o junction_test $(JUNCTION_DEPS) $(JUNCTION_TURF_LD) 
 
 test: pthread_lib pthread_test 
 	cat /dev/null > $(LOG_FILE)
@@ -36,6 +38,7 @@ $(PTHREAD_LIBNAME): pthread_lib
 
 log: $(PTHREAD_LIBNAME)
 	cat /dev/null > $(LOG_FILE)
+	LD_LIBRARY_PATH="$(HOME)/RocksDB-TSX/$(JUNCTION_LIBS)" \
 	LD_PRELOAD="$(HOME)/RocksDB-TSX/$(PTHREAD_LIBNAME)" ./rocksdb/db_bench \
 			   --num_levels=6 --key_size=20 --prefix_size=20 \
 			   --keys_per_prefix=0 --value_size=100 --cache_size=17179869184 \
