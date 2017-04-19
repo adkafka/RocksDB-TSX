@@ -9,6 +9,7 @@
 
 #include <cstring> //memcpy
 #include <fstream> //file writing
+
 #include <junction/Core.h> //For Junction Hash Map
 #include <turf/Heap.h>
 #include <junction/extra/MapAdapter.h>
@@ -20,6 +21,9 @@
 
 extern "C" {
 
+// Prevent backtrace from calling backtrace again
+thread_local bool use_real_func = false;
+
 static std::ofstream* ofs;
 
 junction::extra::MapAdapter *adapter;
@@ -27,27 +31,28 @@ junction::extra::MapAdapter::ThreadContext *context;
 junction::extra::MapAdapter::Map *map;
 
 __attribute__((constructor)) void init(void) { 
+    use_real_func=true;
     ofs = new std::ofstream();
     if(ofs==NULL){
         perror("constructor");
         exit(1);
     }
     ofs->open(LOG_FILE, std::ofstream::out | std::ofstream::app);
-    printf("ofs: %p\n",ofs);
+    //printf("ofs: %p\n",ofs);
 
    //initializes Hash Map 
    adapter = new junction::extra::MapAdapter(1);
    context = new junction::extra::MapAdapter::ThreadContext(*adapter,0);
    map = new junction::extra::MapAdapter::Map(65536); 
+    use_real_func=false;
 }
 
 __attribute__((destructor))  void fini(void) { 
+    use_real_func=true;
     ofs->close();
     delete ofs;
+    use_real_func=false;
 }
-
-// Prevent backtrace from calling backtrace again
-thread_local bool use_real_func = false;
 
 void log_func(const char* func_name, const char * format="", ...){
     // If we should use real func, no op
@@ -372,6 +377,7 @@ void ~condition_variable(){
     log_func("~condition_variable");
 }*/
 
+/*
 #undef notify_all 
 void std::condition_variable::notify_all(){
     static int (*real_create)();
@@ -406,4 +412,5 @@ void std::condition_variable::wait(std::unique_lock<std::mutex>& cv_m){
     real_create(cv_m);
     log_func("wait");
 }
+*/
 }// End external C

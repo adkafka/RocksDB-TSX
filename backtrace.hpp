@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdio>
 #include <cstdlib> 
+#include <iostream> 
 #include <execinfo.h> //backtrace
 #include <fstream> //file writing
 #include <memory> //shared_ptr
@@ -10,7 +11,7 @@
 #include <string>
 
 #ifndef EXEC_PATH
-#define EXEC_PATH "rocksdb/db_bench"
+#define EXEC_PATH "pthread_test"
 #endif
 
 std::string exec(const char* cmd) {
@@ -38,16 +39,18 @@ void backtrace(std::ofstream *ofs){
     // Ignore first two frames (interpose func and this bt)
     for (i=2; i<trace_size; ++i) {
         cmd.str("");
-        cmd << "LD_PRELOAD=\"\" addr2line -C -e " << EXEC_PATH << " -f -i ";
+        cmd << "addr2line -C -e " << EXEC_PATH << " -f -i ";
         cmd << std::hex << trace[i];
 
-        //output = exec(cmd.str().c_str());
+        output = exec(cmd.str().c_str());
+        //(*ofs) << output << std::endl;
+
         out = std::stringstream(output);
         std::getline(out,func,'\n');
         std::getline(out,loc,'\n');
 
         (*ofs) << "(" << i-1 << ") ";
-        (*ofs) << cmd.str() << "\n";
-        //(*ofs) << loc << " [" << func << "]" << std::endl;
+        (*ofs) << loc << " [" << func << "]" << std::endl;
+
     }
 }

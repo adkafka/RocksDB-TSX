@@ -8,6 +8,7 @@ bool ready(false);
 std::mutex m;
 std::condition_variable cv;
 int i=0;
+pthread_mutex_t mutex1;
 
 void waits(){
 	std::unique_lock<std::mutex> lk(m);
@@ -35,6 +36,12 @@ void signals(){
 }
 
 int main(){
+    std::cout << "Doing simple lock test\n";
+    pthread_mutex_init(&mutex1,NULL);
+    pthread_mutex_lock(&mutex1);
+    pthread_mutex_unlock(&mutex1);
+    std::cout << "Done with simple lock test\n";
+    std::cout << "Doing with simple condvar test\n";
 	std::thread t1(waits), t2(signals);
 	t1.join();
 	t2.join();

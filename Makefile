@@ -13,11 +13,8 @@ JUNCTION_TURF_LD = -pthread -L $(JUNCTION_LIBS) -l junction -l turf
 
 all: test
 
-pthread_test: pthread_test.c
-	# works with g++ or gcc
+pthread_test: pthread_test.cpp
 	$(CXX) $(CFLAGS) $< -o pthread_test -lpthread
-pthread_test_cpp: pthread_test.cpp
-	$(CXX) $(CFLAGS) $< -o pthread_test_cpp -lpthread
 pthread_lib: backtrace.hpp pthread_interpose.cpp
 	$(CXX) -shared -fPIC $(CFLAGS) -Wno-unused-value $^ -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS) $(JUNCTION_DEPS) $(JUNCTION_TURF_LD) 
 
@@ -27,11 +24,6 @@ junction_test: junction_test.cpp
 test: pthread_lib pthread_test 
 	cat /dev/null > $(LOG_FILE)
 	LD_PRELOAD="$(HOME)/RocksDB-TSX/$(PTHREAD_LIBNAME)" ./pthread_test
-	cat $(LOG_FILE)
-
-test_cpp: pthread_lib pthread_test_cpp 
-	cat /dev/null > $(LOG_FILE)
-	LD_PRELOAD="$(HOME)/RocksDB-TSX/$(PTHREAD_LIBNAME)" ./pthread_test_cpp
 	cat $(LOG_FILE)
 
 $(PTHREAD_LIBNAME): pthread_lib
@@ -74,4 +66,4 @@ no_interpose:
 			   --benchmarks=filluniquerandom --use_existing_db=0 --num=1000 --threads=2
 
 clean:
-	rm $(PTHREAD_LIBNAME) pthread_test junction_test
+	rm $(PTHREAD_LIBNAME) pthread_test junction_test 2> /dev/null
