@@ -28,7 +28,7 @@ $ cd junction
 $ mkdir build
 $ cd build
 $ mkdir install # Where the headers and libs will be sent
-$ cmake -DCMAKE_INSTALL_PREFIX=install -DBUILD_SHARED_LIBS=ON ..
+$ cmake -DCMAKE_INSTALL_PREFIX=install -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ..
 $ make install
 $ cd ../../
 ```
