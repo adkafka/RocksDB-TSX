@@ -34,14 +34,25 @@ void signals(){
 		lk.lock();
 	}
 }
+void try_test(){
+	
+	std::cout << "locking..\n";
+    pthread_mutex_lock(&mutex1);
+	std::cout << "unlocking.. \n";
+    pthread_mutex_unlock(&mutex1);
+	std::cout <<"done\n";
 
+}
 int main(){
     std::cout << "Doing simple lock test\n";
     pthread_mutex_init(&mutex1,NULL);
     pthread_mutex_lock(&mutex1);
     pthread_mutex_unlock(&mutex1);
     std::cout << "Done with simple lock test\n";
-    //std::cout << "Doing with simple condvar test\n";
+	try_test();
+	try_test();
+	try_test();    
+//std::cout << "Doing with simple condvar test\n";
 	//std::thread t1(waits), t2(signals);
 	//t1.join();
 	//t2.join();

@@ -14,8 +14,8 @@
 
 
 #ifndef EXEC_PATH
-#define EXEC_PATH "pthread_test"
-//#define EXEC_PATH "rocksdb/db_bench"
+//#define EXEC_PATH "pthread_test"
+#define EXEC_PATH "rocksdb/db_bench"
 #endif
 
 typedef junction::ConcurrentMap_Grampa<turf::u64, char*> ConcMap;
@@ -52,8 +52,9 @@ void my_backtrace(std::ofstream *ofs, ConcMap* cache){
 
         ConcMap::Mutator mut = cache->insertOrFind(instruction);
         char* buf = mut.getValue();
-
+	//printf("trace[i]: %p\n",trace[i]); 
         if(!buf){
+	   // printf("cache miss\n");
             std::ostringstream cmd,new_val;
             std::stringstream out;
             std::string output,func,loc;
@@ -62,12 +63,11 @@ void my_backtrace(std::ofstream *ofs, ConcMap* cache){
 
             cmd.str("");
             new_val.str("");
-
             cmd << "LD_PRELOAD=\"\" addr2line -C -e " << EXEC_PATH << " -f -i ";
             cmd << std::hex << trace[i];
             output = exec(cmd.str().c_str());
             //(*ofs) << output << std::endl;
-
+	    printf("%s\n", cmd.str().c_str());
             out = std::stringstream(output);
             std::getline(out,func,'\n');
             std::getline(out,loc,'\n');
@@ -80,6 +80,9 @@ void my_backtrace(std::ofstream *ofs, ConcMap* cache){
 
             mut.exchangeValue(buf);
         }
+	else{
+  	    //printf("cache hit - %s\n", buf);
+	}
         (*ofs) << buf;
     }
 }
