@@ -30,7 +30,6 @@ $(PTHREAD_LIBNAME): pthread_lib
 
 log: $(PTHREAD_LIBNAME)
 	cat /dev/null > $(LOG_FILE)
-	LD_LIBRARY_PATH="$(HOME)/RocksDB-TSX/$(JUNCTION_LIBS)" \
 	LD_PRELOAD="$(HOME)/RocksDB-TSX/$(PTHREAD_LIBNAME)" ./rocksdb/db_bench \
 			   --num_levels=6 --key_size=20 --prefix_size=20 \
 			   --keys_per_prefix=0 --value_size=100 --cache_size=17179869184 \

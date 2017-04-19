@@ -40,6 +40,10 @@ $ cd ../../
     Follow instructions from 'https://gist.github.com/achalddave/7f7323a36f85b6c6dd64'
     - Compile RocksDB ``LDFLAGS="-L/home/adk216/local/lib" CFLAGS="-I/home/adk216/local/include" make``
 
+### Using gdb
+1. Run ``gdb target``.
+1. In gdb, set up the environmnet variables:
+    - ``set env LD_PRELOAD ${HOME}/RocksDB-TSX/libmypthread.so``
 
 ### Design considerations (Meeting with spear)
 - Capture all pthread mutex ops
