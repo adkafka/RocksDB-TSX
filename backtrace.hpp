@@ -67,7 +67,6 @@ void my_backtrace(std::ofstream *ofs, ConcMap* cache){
             cmd << std::hex << trace[i];
             output = exec(cmd.str().c_str());
             //(*ofs) << output << std::endl;
-	    printf("%s\n", cmd.str().c_str());
             out = std::stringstream(output);
             std::getline(out,func,'\n');
             std::getline(out,loc,'\n');
