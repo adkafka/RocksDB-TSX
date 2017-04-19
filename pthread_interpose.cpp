@@ -10,13 +10,10 @@
 #include <cstring> //memcpy
 #include <fstream> //file writing
 
-#include <junction/Core.h> //For Junction Hash Map
-#include <turf/Heap.h>
-#include <junction/extra/MapAdapter.h>
-
 #include "backtrace.hpp"
 
 #define LOG_FILE "mutex_usage.log"
+//#define LOG_FILE "rocksdb/db_bench"
 
 
 extern "C" {
@@ -25,10 +22,7 @@ extern "C" {
 thread_local bool use_real_func = false;
 
 static std::ofstream* ofs;
-
-junction::extra::MapAdapter *adapter;
-junction::extra::MapAdapter::ThreadContext *context;
-junction::extra::MapAdapter::Map *map;
+static ConcMap *cache;
 
 __attribute__((constructor)) void init(void) { 
     use_real_func=true;
@@ -40,10 +34,8 @@ __attribute__((constructor)) void init(void) {
     ofs->open(LOG_FILE, std::ofstream::out | std::ofstream::app);
     //printf("ofs: %p\n",ofs);
 
-   //initializes Hash Map 
-   adapter = new junction::extra::MapAdapter(1);
-   context = new junction::extra::MapAdapter::ThreadContext(*adapter,0);
-   map = new junction::extra::MapAdapter::Map(65536); 
+    //initializes Hash Map 
+    cache = new ConcMap();
     use_real_func=false;
 }
 
@@ -51,20 +43,24 @@ __attribute__((destructor))  void fini(void) {
     use_real_func=true;
     ofs->close();
     delete ofs;
-    use_real_func=false;
+    delete cache;
 }
 
-void log_func(const char* func_name, const char * format="", ...){
+void log_func(const char* func_name, const char * format=NULL ...){
     // If we should use real func, no op
     if(use_real_func==false){
         if(!ofs) init();
         use_real_func = true;
-        char buffer[256];
-        va_list args;
-        va_start(args,format);
-        vsnprintf(buffer,256,format,args);
-        (*ofs) << "(0) " << func_name << " " << buffer << "\n";
-        backtrace(ofs);
+        (*ofs) << "(0) " << func_name;
+        if(format){
+            char buffer[256];
+            va_list args;
+            va_start(args,format);
+            vsnprintf(buffer,256,format,args);
+            (*ofs) << " " << buffer;
+        }
+        (*ofs) << "\n";
+        my_backtrace(ofs,cache);
         (*ofs) <<"\n";
         use_real_func = false;
     }
