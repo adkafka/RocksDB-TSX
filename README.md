@@ -10,6 +10,7 @@ Adam Kafka and Ryan Santos
     - Open up log file, and wrap pthread\_create such that we log every call with where it came from
 
 - Run examples in rockDB and learn from lock usage. Maybe lock success/failures as well...
+- We are running into an issue that stems from interpositioning on C++ class functions. I don't believe we are dealing with the constructor correctly, because it has no return type. It is unclear how the memory address of the class is being passed around (such as when we call the 'correct' constructor). I believe there is an implicit first argument (\*this) that we need to deal with.
 
 ## Gathering the functions
 We used ``nm -D -C db_bench`` to get a list of all dynamicly resolved functions that RocksDB uses in its benchmark. We then manually went through and removed the functions that had no obvious relation to concurency. We than also ran ``nm -C db_bench | grep KEYWORD``, where KEYWORD was a concurrency programming keyword, such as mutex, condition, lock, etc. The list of these functions can be found in 'methods\_full.txt'.
