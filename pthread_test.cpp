@@ -3,6 +3,9 @@
 #include <mutex>
 #include <thread>
 
+//#include <pthread.h>
+//#include "spin_lock.hpp"
+
 bool ready(false);
 std::condition_variable cv;
 std::mutex mtx;
@@ -21,6 +24,8 @@ void go() {
 
 
 int main(){
+    //std::cout << "spin_lock size: " << sizeof(spin_lock) << std::endl;
+    //std::cout << "pthread_mutex_t: " << sizeof(pthread_mutex_t) << std::endl;
     std::cout << "Doing with simple condvar test\n";
     std::thread threads[10];
     // spawn 10 threads:
