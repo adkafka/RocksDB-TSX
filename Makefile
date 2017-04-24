@@ -60,10 +60,10 @@ fill_true: $(PTHREAD_LIBNAME)
 
 readrandomwriterandom: $(PTHREAD_LIBNAME)
 	cat /dev/null > $(LOG_FILE)
-	$(LD_STR) $(DB_BENCH) --benchmarks=readrandomwriterandom
+	$(LD_STR) $(DB_BENCH) --benchmarks=readrandomwriterandom -num 10000000 -threads 4
 
 readrandomwriterandom_true: $(PTHREAD_LIBNAME)
-	$(DB_BENCH) --benchmarks=readrandomwriterandom
+	$(DB_BENCH) --benchmarks=readrandomwriterandom -num 10000000 -threads 4
 
 no_interpose:
 	$(DB_BENCH) $(BENCH_PARAMS_READ)
