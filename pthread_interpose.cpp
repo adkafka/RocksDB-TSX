@@ -20,7 +20,7 @@
 extern "C" {
 
 // Prevent backtrace from calling backtrace again
-thread_local bool use_real_func = true;
+thread_local bool use_real_func = false;
 
 namespace{
     std::ofstream* ofs;
@@ -30,6 +30,7 @@ namespace{
 
 __attribute__((constructor))
 void init(void) { 
+    use_real_func=true;
     ofs = new std::ofstream();
     if(ofs==NULL){
         perror("constructor");
@@ -376,9 +377,7 @@ std::condition_variable::condition_variable(){
         std::memcpy(&real_create,&addr, sizeof(addr));
     }
 
-    use_real_func=true;
     real_create();
-    use_real_func=false;
     log_func("std::condition_variable::condition_variable");
 }
 
@@ -389,9 +388,7 @@ std::condition_variable::~condition_variable(){
         std::memcpy(&real_create,&addr, sizeof(addr));
     }
 
-    use_real_func=true;
     real_create();
-    use_real_func=false;
     log_func("std::condition_variable::~condition_variable");
 }
 */
@@ -403,9 +400,7 @@ void std::condition_variable::notify_all(){
         std::memcpy(&real_create,&addr, sizeof(addr));
     }
 
-    use_real_func=true;
     real_create(this);
-    use_real_func=false;
     log_func("std::condition_variable::notify_all");
 }
 
@@ -416,9 +411,7 @@ void std::condition_variable::notify_one(){
         std::memcpy(&real_create,&addr, sizeof(addr));
     }
 
-    use_real_func=true;
     real_create(this);
-    use_real_func=false;
     log_func("std::condition_variable::notify_one");
 }
 
@@ -429,9 +422,8 @@ void std::condition_variable::wait(std::unique_lock<std::mutex>& cv_m){
         std::memcpy(&real_create,&addr, sizeof(addr));
     }
 
-    use_real_func=true;
+
     real_create(this,cv_m);
-    use_real_func=false;
     log_func("std::condition_variable::wait");
 }
 
