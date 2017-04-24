@@ -58,6 +58,7 @@ void log_func(const char* func_name, const char * format=NULL ...){
         sl.acquire();
         if(!ofs) init();
         use_real_func = true;
+        (*ofs) << "Called from thread: " << pthread_self() << "\n";
         (*ofs) << "(0) " << func_name;
         if(format){
             char buffer[256];
