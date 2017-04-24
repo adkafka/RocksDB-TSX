@@ -10,6 +10,7 @@ Adam Kafka and Ryan Santos
     - Open up log file, and wrap pthread\_create such that we log every call with where it came from
 
 - Run examples in rockDB and learn from lock usage. Maybe lock success/failures as well...
+- We are running into an issue that stems from interpositioning on C++ class functions. I don't believe we are dealing with the constructor correctly, because it has no return type. It is unclear how the memory address of the class is being passed around (such as when we call the 'correct' constructor). I believe there is an implicit first argument (\*this) that we need to deal with.
 
 ## Gathering the functions
 We used ``nm -D -C db_bench`` to get a list of all dynamicly resolved functions that RocksDB uses in its benchmark. We then manually went through and removed the functions that had no obvious relation to concurency. We than also ran ``nm -C db_bench | grep KEYWORD``, where KEYWORD was a concurrency programming keyword, such as mutex, condition, lock, etc. The list of these functions can be found in 'methods\_full.txt'.
@@ -18,7 +19,7 @@ Note, db\_bench uses unique\_lock (and other funcs) that ARE NOT dynamically lin
 
 ## Design of Lock Elision
 ### Locks
-We will use TSX RTM to perform lock elision, using a spin lock. I think the best option (to perform the spin lock), is to use the pthread\_mutex\_t struct itself... Reinterpert cast it to what we need (really just an int) so that we can use it as a spin lock. Another option would be to store an in memory map of pthread\_mutex\_t to spin lock... but this has many downsides...
+We will use TSX RTM to perform lock elision, using a spin lock. I think the best option (to perform the spin lock), is to use the pthread\_mutex\_t struct itself... Reinterpert cast it to what we need (really just an int) so that we can use it as a spin lock. Maybe we should cast this to a semaphore instead...? Another option would be to store an in memory map of pthread\_mutex\_t to spin lock... but this has many downsides, though may be unavoidable in CondVars...
 
 References for this solution include:
 - [tsx-tools](https://github.com/andikleen/tsx-tools/blob/master/locks/spin-rtm.c)
@@ -28,13 +29,15 @@ References for this solution include:
 - [intel ppt](http://www.halobates.de/adding-lock-elision-to-linux.pdf)
 - [utoronto ppt](http://individual.utoronto.ca/mikedaiwang/tm/Intel_TSX_Overview.pdf)
 - [intel handbook](https://www-ssl.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-optimization-manual.pdf)
+- [Spin lock in c++](http://en.cppreference.com/w/cpp/atomic/atomic_flag)
 
 ### RWLocks
 I believe we can treat RW locks the same as normal locks, because TM will catch any issues. RW locks are designed for mutliple readers, one writer. TM will place the memory in the corresponding read/write set and detect any issues via cache coherence.
 
 ### CondVars
-Based off [Richard Yoo paper](http://pages.cs.wisc.edu/~rajwar/papers/SC13_TSX.pdf). Uses Linux futex to atomically put self on wait list. Signal thread registers a callback if it signals. Thread will execute callback to update futex. BusyWait did the best in the paper, so we should impliment that if we can.
+The best option will be to base our implementation off of [Wang and Spear's work](http://transact2014.cse.lehigh.edu/wang2.pdf). The corresponding [github link](https://github.com/mfs409/transmem/tree/master/libs/libtmcondvar) will be very valuable as well. we will need per thread link list of semaphores. We will have to be careful about when we 'commit' our transaction. I think we would need a thread-safe map to map the condition variable ptr to our linked list... Hopefully this won't introduce issues...
 
+Other option would be based off [Richard Yoo paper](http://pages.cs.wisc.edu/~rajwar/papers/SC13_TSX.pdf). Uses Linux futex to atomically put self on wait list. Signal thread registers a callback if it signals. Thread will execute callback to update futex. BusyWait did the best in the paper, so we should impliment that if we can.
 
 ## Notes
 ### Compiling on 4pac1
@@ -65,6 +68,8 @@ $ cd ../../
     - ``set env LD_PRELOAD ${HOME}/RocksDB-TSX/libmypthread.so``
 
 ### Design considerations (Meeting with spear)
+- Have another library that replaces locks with spin locks (our fallback locks), good comparison (and good starting point)
+- Lemming problem -> good to talk about during presentation
 - Capture all pthread mutex ops
     - CondVars? - Richard Yoo paper 2013, Supercomputing
         - One option, come back to this issue
