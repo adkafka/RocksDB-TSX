@@ -50,6 +50,23 @@ log: $(PTHREAD_LIBNAME)
 	cat /dev/null > $(LOG_FILE)
 	$(LD_STR) $(DB_BENCH) $(BENCH_PARAMS_READ)
 
+
+fill: $(PTHREAD_LIBNAME)
+	cat /dev/null > $(LOG_FILE)
+	$(LD_STR) $(DB_BENCH) --benchmarks=fillrandom
+
+fill_true: $(PTHREAD_LIBNAME)
+	cat /dev/null > $(LOG_FILE)
+	$(DB_BENCH) --benchmarks=fillrandom
+
+readrandomwriterandom: $(PTHREAD_LIBNAME)
+	cat /dev/null > $(LOG_FILE)
+	$(LD_STR) $(DB_BENCH) --benchmarks=readrandomwriterandom
+
+readrandomwriterandom_true: $(PTHREAD_LIBNAME)
+	cat /dev/null > $(LOG_FILE)
+	$(DB_BENCH) --benchmarks=readrandomwriterandom
+
 no_interpose:
 	$(DB_BENCH) $(BENCH_PARAMS_READ)
 
