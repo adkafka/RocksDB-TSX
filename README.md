@@ -46,6 +46,15 @@ Note, db\_bench uses unique\_lock (and other funcs) that ARE NOT dynamically lin
 
 We may want to look into the libraries that are linked in (with ``ldd``)
 
+## BenchMarks
+RocksDB provides us with multiple benchmarks to use. Such as filling, reading, writing, deleting. (See help.txt -benchmarks). For simple tests we have created a target to fill 100k keys in random order with and without interposition. We have also created a target to randomly read and write using N threads. I believe the weight is 90% Reads - 10% Writes. 
+
+With Interposition BenchMark
+```
+$ make fill
+$ make readrandomwriterandom
+```
+
 ## Notes
 ### Compiling
 - Git clone the repository
