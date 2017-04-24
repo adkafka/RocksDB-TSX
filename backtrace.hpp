@@ -14,8 +14,8 @@
 
 
 #ifndef EXEC_PATH
-#define EXEC_PATH "pthread_test"
-//#define EXEC_PATH "rocksdb/db_bench"
+//#define EXEC_PATH "pthread_test"
+#define EXEC_PATH "rocksdb/db_bench"
 #endif
 
 typedef junction::ConcurrentMap_Grampa<turf::u64, char*> ConcMap;
