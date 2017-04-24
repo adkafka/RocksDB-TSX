@@ -15,7 +15,7 @@ all: test
 
 pthread_test: pthread_test.cpp
 	$(CXX) $(CFLAGS) $< -o pthread_test -lpthread
-pthread_lib: backtrace.hpp pthread_interpose.cpp
+pthread_lib: spin_lock.hpp backtrace.hpp pthread_interpose.cpp 
 	$(CXX) -shared -fPIC $(CFLAGS) -Wno-unused-value $^ -o $(PTHREAD_LIBNAME) -ldl $(LDFLAGS) $(JUNCTION_DEPS) $(JUNCTION_TURF_LD) 
 
 junction_test: junction_test.cpp
