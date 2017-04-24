@@ -11,6 +11,7 @@
 #include <fstream> //file writing
 
 #include "backtrace.hpp"
+#include "spin_lock.hpp"
 
 #define LOG_FILE "mutex_usage.log"
 //#define LOG_FILE "rocksdb/db_bench"
@@ -19,13 +20,14 @@
 extern "C" {
 
 // Prevent backtrace from calling backtrace again
-thread_local bool use_real_func = false;
+thread_local bool use_real_func = true;
 
 static std::ofstream* ofs;
 static ConcMap *cache;
+static spin_lock sl;
 
-__attribute__((constructor)) void init(void) { 
-    use_real_func=true;
+__attribute__((constructor))
+void init(void) { 
     ofs = new std::ofstream();
     if(ofs==NULL){
         perror("constructor");
@@ -39,7 +41,8 @@ __attribute__((constructor)) void init(void) {
     use_real_func=false;
 }
 
-__attribute__((destructor))  void fini(void) { 
+__attribute__((destructor))
+void fini(void) { 
     use_real_func=true;
     ofs->close();
     delete ofs;
@@ -49,6 +52,7 @@ __attribute__((destructor))  void fini(void) {
 void log_func(const char* func_name, const char * format=NULL ...){
     // If we should use real func, no op
     if(use_real_func==false){
+        sl.acquire();
         if(!ofs) init();
         use_real_func = true;
         (*ofs) << "(0) " << func_name;
@@ -62,11 +66,14 @@ void log_func(const char* func_name, const char * format=NULL ...){
         (*ofs) << "\n";
         my_backtrace(ofs,cache);
         (*ofs) <<"\n";
+        /* Use for debugging only, big slow down */
+        ofs->flush();
+        sl.release();
         use_real_func = false;
     }
 }
 
-
+/*
 #undef pthread_mutex_init 
 int pthread_mutex_init(pthread_mutex_t * mutex, const pthread_mutexattr_t *mutexattr){
     int rc;
@@ -80,6 +87,7 @@ int pthread_mutex_init(pthread_mutex_t * mutex, const pthread_mutexattr_t *mutex
     log_func("pthread_mutex_init");
     return rc;
 }
+*/
 
 #undef pthread_mutex_lock
 int pthread_mutex_lock(pthread_mutex_t * mutex){
@@ -151,6 +159,7 @@ int pthread_mutex_consistent(pthread_mutex_t * mutex){
     return rc;
 }
 
+/*
 #undef pthread_mutex_destroy
 int pthread_mutex_destroy(pthread_mutex_t * mutex){
     int rc;
@@ -178,6 +187,7 @@ int pthread_mutexattr_destroy(pthread_mutexattr_t * mutexattr){
     log_func("pthread_mutexattr_destroy");
     return rc;
 }
+*/
 
 #undef pthread_mutexattr_init
 int pthread_mutexattr_init(pthread_mutexattr_t * mutexattr){
@@ -207,20 +217,7 @@ int pthread_mutex_settype(pthread_mutexattr_t * mutexattr){
     return rc;
 }
 
-#undef pthread_cond_broadcast
-int pthread_cond_braodcast(pthread_cond_t * cond){
-    int rc;
-    static int (*real_create)(pthread_cond_t * cond);
-    if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "pthread_cond_broadcast")};
-        std::memcpy(&real_create,&addr, sizeof(addr));
-    }
-
-    rc = real_create(cond);
-    log_func("pthread_cond_broadcast");
-    return rc;
-}
-
+/*
 #undef pthread_cond_destroy 
 int pthread_cond_destroy(pthread_cond_t * cond){
     int rc;
@@ -246,6 +243,22 @@ int pthread_cond_init(pthread_cond_t * __restrict cond, const pthread_condattr_t
 
     rc = real_create(cond,attr);
     log_func("pthread_cond_init ");
+    return rc;
+}
+*/
+
+/*
+#undef pthread_cond_broadcast
+int pthread_cond_braodcast(pthread_cond_t * cond){
+    int rc;
+    static int (*real_create)(pthread_cond_t * cond);
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "pthread_cond_broadcast")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    rc = real_create(cond);
+    log_func("pthread_cond_broadcast");
     return rc;
 }
 
@@ -278,7 +291,9 @@ int pthread_cond_timedwait(pthread_cond_t * __restrict cond, pthread_mutex_t * _
     log_func("pthread_cond_timedwait ");
     return rc;
 }
+*/
 
+/*
 #undef pthread_rwlock_destroy 
 int pthread_rwlock_destroy(pthread_rwlock_t * rwlock){
     int rc;
@@ -292,6 +307,7 @@ int pthread_rwlock_destroy(pthread_rwlock_t * rwlock){
     log_func("pthread_rwlock_destroy ");
     return rc;
 }
+*/
 
 #undef pthread_rwlock_init 
 int pthread_rwlock_init(pthread_rwlock_t * __restrict rwlock, const pthread_rwlockattr_t * __restrict rwattr){
@@ -349,64 +365,72 @@ int pthread_rwlock_wrlock(pthread_rwlock_t * rwlock){
     return rc;
 }
 
-/*#undef condition_variable 
+
+/*
 std::condition_variable::condition_variable(){
     static void (*real_create)();
     if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "condition_variable")};
+        const void* addr{dlsym(RTLD_NEXT, "_ZNSt18condition_variableC1Ev")};
         std::memcpy(&real_create,&addr, sizeof(addr));
     }
 
+    use_real_func=true;
     real_create();
-    log_func("condition_variable");
-}*/
-/*
-#undef ~condition_variable 
-void ~condition_variable(){
-    static int (*real_create)();
-    if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "~condition_variable")};
-        std::memcpy(&real_create,&addr, sizeof(addr));
-    }
-
-    real_create();
-    log_func("~condition_variable");
-}*/
-
-/*
-#undef notify_all 
-void std::condition_variable::notify_all(){
-    static int (*real_create)();
-    if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "notify_all")};
-        std::memcpy(&real_create,&addr, sizeof(addr));
-    }
-
-    real_create();
-    log_func("notify_all");
+    use_real_func=false;
+    log_func("std::condition_variable::condition_variable");
 }
 
-#undef notify_one 
-void std::condition_variable::notify_one(){
+std::condition_variable::~condition_variable(){
     static void (*real_create)();
     if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "notify_one")};
+        const void* addr{dlsym(RTLD_NEXT, "_ZNSt18condition_variableD1Ev")};
         std::memcpy(&real_create,&addr, sizeof(addr));
     }
+
+    use_real_func=true;
     real_create();
-    log_func("notify_one");
-}
-
-#undef wait 
-void std::condition_variable::wait(std::unique_lock<std::mutex>& cv_m){
-    static int (*real_create)(std::unique_lock<std::mutex>& cv_m);
-    if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "wait")};
-        std::memcpy(&real_create,&addr, sizeof(addr));
-    }
-
-    real_create(cv_m);
-    log_func("wait");
+    use_real_func=false;
+    log_func("std::condition_variable::~condition_variable");
 }
 */
+
+void std::condition_variable::notify_all(){
+    static void (*real_create)(std::condition_variable* this_);
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "_ZNSt18condition_variable10notify_allEv")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    use_real_func=true;
+    real_create(this);
+    use_real_func=false;
+    log_func("std::condition_variable::notify_all");
+}
+
+void std::condition_variable::notify_one(){
+    static void (*real_create)(std::condition_variable* this_);
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "_ZNSt18condition_variable10notify_oneEv")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    use_real_func=true;
+    real_create(this);
+    use_real_func=false;
+    log_func("std::condition_variable::notify_one");
+}
+
+void std::condition_variable::wait(std::unique_lock<std::mutex>& cv_m){
+    static void (*real_create)(std::condition_variable* this_,std::unique_lock<std::mutex>& cv_m);
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "_ZNSt18condition_variable4waitERSt11unique_lockISt5mutexE")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    use_real_func=true;
+    real_create(this,cv_m);
+    use_real_func=false;
+    log_func("std::condition_variable::wait");
+}
+
 }// End external C

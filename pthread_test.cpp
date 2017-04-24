@@ -1,59 +1,36 @@
 #include <iostream>
-#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
 
 bool ready(false);
-std::mutex m;
 std::condition_variable cv;
-int i=0;
-pthread_mutex_t mutex1;
+std::mutex mtx;
 
-void waits(){
-	std::unique_lock<std::mutex> lk(m);
-	std::cout << "Waiting.. \n";
-	cv.wait(lk, []{return i==1;});
-	std::cout << "...finished waiting. i==1\n";
-	ready = true;
+void print_id (int id) {
+    std::unique_lock<std::mutex> lck(mtx);
+    while (!ready) cv.wait(lck);
+    std::cout << "thread " << id << '\n';
 }
 
-void signals(){
-	std::this_thread::sleep_for(std::chrono::seconds(2));
-	std::cout << "Notifying falsely \n";
-	cv.notify_one();
-	std::cout << "after notify\n";	
-	std::unique_lock<std::mutex> lk(m);
-	i=1;
-	std::cout << "we are " << ready << std::endl;
-	while(!ready){
-		std::cout << "Notifying true change. \n";
-		lk.unlock();
-		cv.notify_one();
-		std::this_thread::sleep_for(std::chrono::seconds(1));
-		lk.lock();
-	}
+void go() {
+    std::unique_lock<std::mutex> lck(mtx);
+    ready = true;
+    cv.notify_all();
 }
-void try_test(){
-	
-	std::cout << "locking..\n";
-    pthread_mutex_lock(&mutex1);
-	std::cout << "unlocking.. \n";
-    pthread_mutex_unlock(&mutex1);
-	std::cout <<"done\n";
 
-}
+
 int main(){
-    std::cout << "Doing simple lock test\n";
-    pthread_mutex_init(&mutex1,NULL);
-    pthread_mutex_lock(&mutex1);
-    pthread_mutex_unlock(&mutex1);
-    std::cout << "Done with simple lock test\n";
-	try_test();
-	try_test();
-	try_test();    
-//std::cout << "Doing with simple condvar test\n";
-	//std::thread t1(waits), t2(signals);
-	//t1.join();
-	//t2.join();
+    std::cout << "Doing with simple condvar test\n";
+    std::thread threads[10];
+    // spawn 10 threads:
+    for (int i=0; i<10; ++i)
+        threads[i] = std::thread(print_id,i);
+    std::cout << "10 threads ready to race...\n";
+    go();                       // go!
+    // Join the threads
+    for (int i=0; i<10; ++i)
+        threads[i].join();
+    
+    return 0;
 }
