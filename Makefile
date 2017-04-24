@@ -56,7 +56,6 @@ fill: $(PTHREAD_LIBNAME)
 	$(LD_STR) $(DB_BENCH) --benchmarks=fillrandom
 
 fill_true: $(PTHREAD_LIBNAME)
-	cat /dev/null > $(LOG_FILE)
 	$(DB_BENCH) --benchmarks=fillrandom
 
 readrandomwriterandom: $(PTHREAD_LIBNAME)
@@ -64,7 +63,6 @@ readrandomwriterandom: $(PTHREAD_LIBNAME)
 	$(LD_STR) $(DB_BENCH) --benchmarks=readrandomwriterandom
 
 readrandomwriterandom_true: $(PTHREAD_LIBNAME)
-	cat /dev/null > $(LOG_FILE)
 	$(DB_BENCH) --benchmarks=readrandomwriterandom
 
 no_interpose:

@@ -22,9 +22,11 @@ extern "C" {
 // Prevent backtrace from calling backtrace again
 thread_local bool use_real_func = true;
 
-static std::ofstream* ofs;
-static ConcMap *cache;
-static spin_lock sl;
+namespace{
+    std::ofstream* ofs;
+    ConcMap *cache;
+    spin_lock sl;
+}
 
 __attribute__((constructor))
 void init(void) { 
