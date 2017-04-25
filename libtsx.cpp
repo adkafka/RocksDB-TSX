@@ -1,4 +1,4 @@
-#include <bits/pthreadtypes.h> //get param types
+#include <pthread.h> //Get paramteter types
 #include <string.h> //memset
 #include <stdio.h> //printf
 
@@ -15,7 +15,7 @@ extern "C" {
 
 __attribute__((constructor))
 void init(void) { 
-    //printf("IN INITIALIZER\n");
+    printf("IN INITIALIZER\n");
 }
 
 __attribute__((destructor))
@@ -66,7 +66,7 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
     /* All else failed, use fall-back lock */
     lock->acquire();
 
-    return 1;
+    return 0;
 }
 
 #undef pthread_mutex_unlock
@@ -79,31 +79,56 @@ int pthread_mutex_unlock(pthread_mutex_t * mutex){
     else
         lock->release();
 
-    return 1;
+    return 0;
 }
 
 #undef pthread_mutex_init 
 int pthread_mutex_init(pthread_mutex_t * mutex, const pthread_mutexattr_t *mutexattr){ 
     spin_lock* lock = reinterpret_cast<spin_lock*>(mutex);
     memset(lock,0,sizeof(pthread_mutex_t));
-    return 1;
+    return 0;
 }
 
 
 #undef pthread_mutex_trylock
-int pthread_mutex_trylock(pthread_mutex_t * mutex){
-    return 0;
-}
+int pthread_mutex_trylock(pthread_mutex_t * mutex){ return 0; }
 
 #undef pthread_mutex_timedlock
-int pthread_mutex_timedlock(pthread_mutex_t * mutex, const struct timespec *abs_timeout){
+int pthread_mutex_timedlock(pthread_mutex_t * mutex, const struct timespec *abs_timeout){ return 0; }
+
+#undef pthread_mutex_consistent
+int pthread_mutex_consistent(pthread_mutex_t * mutex){ return 0; }
+#undef pthread_mutex_destroy
+int pthread_mutex_destroy(pthread_mutex_t * mutex){ return 0; }
+/* missing set/getprioceiling */
+
+/* RW locks can be treated as a normal lock, because TSX will deal 
+ * with write conflicts by aborting other transactions */
+
+#undef pthread_rwlock_init 
+int pthread_rwlock_init(pthread_rwlock_t* __restrict rwlock, const pthread_rwlockattr_t * __restrict rwattr){
+    pthread_mutex_init(reinterpret_cast<pthread_mutex_t*>(rwlock),0);
     return 0;
 }
 
-#undef pthread_mutex_consistent
-int pthread_mutex_consistent(pthread_mutex_t * mutex){
+#undef pthread_rwlock_rdlock 
+int pthread_rwlock_rdlock(pthread_rwlock_t* rwlock){
+    pthread_mutex_lock(reinterpret_cast<pthread_mutex_t*>(rwlock));
     return 0;
 }
+#undef pthread_rwlock_wrlock 
+int pthread_rwlock_wrlock(pthread_rwlock_t* rwlock){
+    pthread_mutex_lock(reinterpret_cast<pthread_mutex_t*>(rwlock));
+    return 0;
+}
+#undef pthread_rwlock_unlock 
+int pthread_rwlock_unlock(pthread_rwlock_t* rwlock){
+    pthread_mutex_unlock(reinterpret_cast<pthread_mutex_t*>(rwlock));
+    return 0;
+}
+#undef pthread_rwlock_destroy 
+int pthread_rwlock_destroy(pthread_rwlock_t* rwlock){ return 0; }
+/* Missing trylocks for rw */
 
 
 }// end extern c
