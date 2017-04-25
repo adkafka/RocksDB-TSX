@@ -1,9 +1,9 @@
 #include <iostream>
+#include <pthread.h>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
 
-//#include <pthread.h>
 //#include "spin_lock.hpp"
 
 bool ready(false);
@@ -23,9 +23,7 @@ void go() {
 }
 
 
-int main(){
-    //std::cout << "spin_lock size: " << sizeof(spin_lock) << std::endl;
-    //std::cout << "pthread_mutex_t: " << sizeof(pthread_mutex_t) << std::endl;
+void condvar_test(){
     std::cout << "Doing with simple condvar test\n";
     std::thread threads[10];
     // spawn 10 threads:
@@ -36,6 +34,35 @@ int main(){
     // Join the threads
     for (int i=0; i<10; ++i)
         threads[i].join();
-    
-    return 0;
+}
+
+long count_val = 0;
+pthread_mutex_t mutex;
+
+void count(int id){
+    for(int i=0; i<100; i++){
+        pthread_mutex_lock(&mutex);
+        count_val++;
+        pthread_mutex_unlock(&mutex);
+    }
+}
+
+void lock_test(){
+    std::cout << "Counting to 1000 with 10 threads\n";
+    std::thread threads[10];
+    pthread_mutex_init(&mutex,0);
+    // spawn 10 threads:
+    for (int i=0; i<10; ++i)
+        threads[i] = std::thread(count,i);
+    for (int i=0; i<10; ++i)
+        threads[i].join();
+
+    std::cout << "Final value: "<< count_val << "\n";
+}
+
+int main(){
+    //std::cout << "spin_lock size: " << sizeof(spin_lock) << std::endl;
+    //std::cout << "pthread_mutex_t: " << sizeof(pthread_mutex_t) << std::endl;
+    lock_test();
+    //condvar_test();
 }

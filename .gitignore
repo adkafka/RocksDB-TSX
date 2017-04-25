@@ -1,4 +1,4 @@
 mutex_usage.log*
 backtrace.o
-libmypthread.so
+*.so
 pthread_test
