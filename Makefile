@@ -81,4 +81,4 @@ no_interpose:
 	$(DB_BENCH) $(BENCH_PARAMS_READ)
 
 clean:
-	-rm $(PTHREAD_LIBNAME) pthread_test junction_test 2> /dev/null
+	-rm -f $(PTHREAD_LIBNAME) pthread_test junction_test 2> /dev/null
