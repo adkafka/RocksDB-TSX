@@ -1,6 +1,12 @@
 #include <pthread.h> //Get paramteter types
 #include <string.h> //memset
 #include <stdio.h> //printf
+#include <time.h> //Timespec param
+#include <unistd.h> //syscall
+#include <sys/syscall.h> //syscall names
+#include <linux/futex.h> //futex
+#include <limits.h> //INT_MAX
+#include <condition_variable> //condvar class
 
 #include "rtm.h" //tsx stuff
 #include "spin_lock.hpp"
@@ -15,7 +21,6 @@ extern "C" {
 
 __attribute__((constructor))
 void init(void) { 
-    printf("IN INITIALIZER\n");
 }
 
 __attribute__((destructor))
@@ -102,7 +107,8 @@ int pthread_mutex_consistent(pthread_mutex_t * mutex){ return 0; }
 int pthread_mutex_destroy(pthread_mutex_t * mutex){ return 0; }
 /* missing set/getprioceiling */
 
-/* RW locks can be treated as a normal lock, because TSX will deal 
+/* RWLOCKS
+ * RW locks can be treated as a normal lock, because TSX will deal 
  * with write conflicts by aborting other transactions */
 
 #undef pthread_rwlock_init 
@@ -129,6 +135,56 @@ int pthread_rwlock_unlock(pthread_rwlock_t* rwlock){
 #undef pthread_rwlock_destroy 
 int pthread_rwlock_destroy(pthread_rwlock_t* rwlock){ return 0; }
 /* Missing trylocks for rw */
+
+
+/* Futex */
+static int sys_futex(std::atomic<int> *uaddr, int futex_op, int val,
+        const struct timespec *timeout, int *uaddr2, int val3) {
+    return syscall(SYS_futex, reinterpret_cast<int*>(uaddr), 
+            futex_op, val, timeout, uaddr, val3);
+}
+int futex_wake(std::atomic<int> *addr, int nr) {
+    return sys_futex(addr, FUTEX_WAKE_PRIVATE, nr, NULL, NULL, 0);
+}
+int futex_signal(std::atomic<int> *addr) {
+    return (futex_wake(addr, 1) >= 0) ? 0 : -1;
+}
+int futex_broadcast(std::atomic<int> *addr) {
+    return (futex_wake(addr, INT_MAX) >= 0) ? 0 : -1;
+}
+int futex_wait(std::atomic<int> *addr, int val, const struct timespec *to) {
+    return sys_futex(addr, FUTEX_WAIT_PRIVATE, val, to, NULL, 0);
+}
+
+/* CONDVARS */
+std::condition_variable::condition_variable(){
+    auto fut = reinterpret_cast<std::atomic<int>*>(this);
+    (*fut) = 0;
+}
+
+std::condition_variable::~condition_variable(){
+}
+
+void std::condition_variable::notify_all(){
+    auto fut = reinterpret_cast<std::atomic<int>*>(this);
+    (*fut)++;
+    futex_broadcast(fut);
+}
+
+void std::condition_variable::notify_one(){
+    auto fut = reinterpret_cast<std::atomic<int>*>(this);
+    (*fut)++;
+    futex_signal(fut);
+}
+
+void std::condition_variable::wait(std::unique_lock<std::mutex>& cv_m){
+    auto fut = reinterpret_cast<std::atomic<int>*>(this);
+    int val = *fut;
+
+    cv_m.unlock();
+    futex_wait(fut,val,NULL);
+    cv_m.lock();
+}
 
 
 }// end extern c

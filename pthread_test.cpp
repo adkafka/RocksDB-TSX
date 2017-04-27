@@ -6,6 +6,8 @@
 
 //#include "spin_lock.hpp"
 
+/* COND VAR */
+
 bool ready(false);
 std::condition_variable cv;
 std::mutex mtx;
@@ -36,9 +38,11 @@ void condvar_test(){
         threads[i].join();
 }
 
+/* LOCK */
+
 long count_val = 0;
 pthread_mutex_t mutex;
-const long count_per_thread = 10000;
+const long count_per_thread = 1000000;
 
 void count(int id){
     for(int i=0; i<count_per_thread; i++){
@@ -60,6 +64,8 @@ void lock_test(){
 
     std::cout << "Final value: "<< count_val << "\n";
 }
+
+/* RWLOCK */
 
 pthread_rwlock_t rwlock;
 double checking_balance = 100.0;
@@ -101,9 +107,10 @@ void rwlock_test(){
 
 
 int main(){
+    //std::cout << "int size: " << sizeof(int) << std::endl;
     //std::cout << "spin_lock size: " << sizeof(spin_lock) << std::endl;
     //std::cout << "pthread_mutex_t: " << sizeof(pthread_mutex_t) << std::endl;
     //lock_test();
-    rwlock_test();
-    //condvar_test();
+    //rwlock_test();
+    condvar_test();
 }
