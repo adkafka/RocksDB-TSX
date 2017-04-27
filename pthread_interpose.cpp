@@ -76,6 +76,20 @@ void log_func(const char* func_name, const char * format=NULL ...){
         use_real_func = false;
     }
 }
+#undef pthread_exit
+void pthread_exit(void *retval){
+    static int (*real_create)(void* retval);
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "pthread_exit")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    log_func("pthread_exit");
+    real_create(retval);
+    exit(1);
+}
+
+/** PTHREAD_MUTEX **/
 
 /*
 #undef pthread_mutex_init 
@@ -89,6 +103,20 @@ int pthread_mutex_init(pthread_mutex_t * mutex, const pthread_mutexattr_t *mutex
 
     rc = real_create(mutex, mutexattr);
     log_func("pthread_mutex_init");
+    return rc;
+}
+
+#undef pthread_mutex_destroy
+int pthread_mutex_destroy(pthread_mutex_t * mutex){
+    int rc;
+    static int (*real_create)(pthread_mutex_t * mutex);
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "pthread_mutex_destroy")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    rc = real_create(mutex);
+    log_func("pthread_mutex_destroy");
     return rc;
 }
 */
@@ -121,20 +149,6 @@ int pthread_mutex_trylock(pthread_mutex_t * mutex){
     return rc;
 }
 
-#undef pthread_mutex_timedlock
-int pthread_mutex_timedlock(pthread_mutex_t * mutex, const struct timespec *abs_timeout){
-    int rc;
-    static int (*real_create)(pthread_mutex_t * mutex, const struct timespec *abs_timeout);
-    if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "pthread_mutex_timedlock")};
-        std::memcpy(&real_create,&addr, sizeof(addr));
-    }
-
-    rc = real_create(mutex,abs_timeout);
-    log_func("pthread_mutex_timedlock");
-    return rc;
-}
-
 #undef pthread_mutex_unlock
 int pthread_mutex_unlock(pthread_mutex_t * mutex){
     int rc;
@@ -149,77 +163,7 @@ int pthread_mutex_unlock(pthread_mutex_t * mutex){
     return rc;
 }
 
-#undef pthread_mutex_consistent
-int pthread_mutex_consistent(pthread_mutex_t * mutex){
-    int rc;
-    static int (*real_create)(pthread_mutex_t * mutex);
-    if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "pthread_mutex_consistent")};
-        std::memcpy(&real_create,&addr, sizeof(addr));
-    }
-
-    rc = real_create(mutex);
-    log_func("pthread_mutex_consistent");
-    return rc;
-}
-
-/*
-#undef pthread_mutex_destroy
-int pthread_mutex_destroy(pthread_mutex_t * mutex){
-    int rc;
-    static int (*real_create)(pthread_mutex_t * mutex);
-    if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "pthread_mutex_destroy")};
-        std::memcpy(&real_create,&addr, sizeof(addr));
-    }
-
-    rc = real_create(mutex);
-    log_func("pthread_mutex_destroy");
-    return rc;
-}
-
-#undef pthread_mutexattr_destroy
-int pthread_mutexattr_destroy(pthread_mutexattr_t * mutexattr){
-    int rc;
-    static int (*real_create)(pthread_mutexattr_t * mutexattr);
-    if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "pthread_mutexattr_destroy")};
-        std::memcpy(&real_create,&addr, sizeof(addr));
-    }
-
-    rc = real_create(mutexattr);
-    log_func("pthread_mutexattr_destroy");
-    return rc;
-}
-*/
-
-#undef pthread_mutexattr_init
-int pthread_mutexattr_init(pthread_mutexattr_t * mutexattr){
-    int rc;
-    static int (*real_create)(pthread_mutexattr_t * mutexattr);
-    if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "pthread_mutexattr_init")};
-        std::memcpy(&real_create,&addr, sizeof(addr));
-    }
-
-    rc = real_create(mutexattr);
-    log_func("pthread_mutexattr_init");
-    return rc;
-}
-
-#undef pthread_mutexattr_settype
-int pthread_mutex_settype(pthread_mutexattr_t * mutexattr){
-    int rc;
-    static int (*real_create)(pthread_mutexattr_t * mutexattr);
-    if (!real_create){
-        const void* addr{dlsym(RTLD_NEXT, "pthread_mutexattr_settype")};
-        std::memcpy(&real_create,&addr, sizeof(addr));
-    }
-
-    rc = real_create(mutexattr);
-    log_func("pthread_mutexattr_settype");
-    return rc;
-}
+/** PTHREAD_COND **/
 
 /*
 #undef pthread_cond_destroy 
@@ -295,7 +239,23 @@ int pthread_cond_timedwait(pthread_cond_t * __restrict cond, pthread_mutex_t * _
     log_func("pthread_cond_timedwait ");
     return rc;
 }
+
+#undef pthread_cond_wait 
+int pthread_cond_wait(pthread_cond_t * __restrict cond, pthread_mutex_t * __restrict mutex){
+    int rc;
+    static int (*real_create)(pthread_cond_t *__restrict cond, pthread_mutex_t *__restrict mutex);
+    if (!real_create){
+        const void* addr{dlsym(RTLD_NEXT, "pthread_cond_wait")};
+        std::memcpy(&real_create,&addr, sizeof(addr));
+    }
+
+    rc = real_create(cond,mutex);
+    log_func("pthread_cond_wait");
+    return rc;
+}
 */
+
+/** PTHREAD_RWLOCK **/
 
 /*
 #undef pthread_rwlock_destroy 
@@ -311,7 +271,6 @@ int pthread_rwlock_destroy(pthread_rwlock_t * rwlock){
     log_func("pthread_rwlock_destroy ");
     return rc;
 }
-*/
 
 #undef pthread_rwlock_init 
 int pthread_rwlock_init(pthread_rwlock_t * __restrict rwlock, const pthread_rwlockattr_t * __restrict rwattr){
@@ -326,6 +285,7 @@ int pthread_rwlock_init(pthread_rwlock_t * __restrict rwlock, const pthread_rwlo
     log_func("pthread_rwlock_init ");
     return rc;
 }
+*/
 
 #undef pthread_rwlock_rdlock 
 int pthread_rwlock_rdlock(pthread_rwlock_t * rwlock){
@@ -369,6 +329,7 @@ int pthread_rwlock_wrlock(pthread_rwlock_t * rwlock){
     return rc;
 }
 
+/** STD::CONDITION_VARIABLE **/
 
 /*
 std::condition_variable::condition_variable(){
@@ -378,7 +339,7 @@ std::condition_variable::condition_variable(){
         std::memcpy(&real_create,&addr, sizeof(addr));
     }
 
-    real_create();
+    real_create(this);
     log_func("std::condition_variable::condition_variable");
 }
 
@@ -389,7 +350,7 @@ std::condition_variable::~condition_variable(){
         std::memcpy(&real_create,&addr, sizeof(addr));
     }
 
-    real_create();
+    real_create(this);
     log_func("std::condition_variable::~condition_variable");
 }
 */
