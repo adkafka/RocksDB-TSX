@@ -18,6 +18,29 @@
 
 extern "C" {
 
+class TLS_attributes{
+    public:
+        int locks, attempts, exp, ret, con, cap, deb, nest, fbl, other;
+        TLS_attributes(){
+            locks=0, attempts=0; exp=0; ret=0; con=0; cap=0; deb=0; nest=0; fbl=0; other=0;
+        }
+        ~TLS_attributes(){
+            printf("Thread_local aborts: \n\
+                    Locks:\t%d\n\
+                    Attempts:\t%d\n\
+                    Explicit:\t%d\n\
+                    Retry:\t%d\n\
+                    Conflict:\t%d\n\
+                    Capacity:\t%d\n\
+                    Debug:\t%d\n\
+                    Nested:\t%d\n\
+                    Fallback:\t%d\n\
+                    Other:\t%d\n",
+                    locks,attempts,exp,ret,con,cap,deb,nest,fbl,other);
+        }
+};
+
+volatile thread_local TLS_attributes stats;
 
 __attribute__((constructor))
 void init(void) { 
@@ -26,6 +49,7 @@ void init(void) {
 __attribute__((destructor))
 void fini(void) { 
 }
+
 
 
 /** PTHREAD_MUTEX METHODS **/
@@ -38,6 +62,8 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
     unsigned status;
     unsigned retry = NUM_RETRIES_OTHER;
 
+    stats.locks++;
+
     for (i = 0; i < retry; i++) {
         if ((status = _xbegin()) == _XBEGIN_STARTED) {
             /* If lock is not held, we succesfully started a transaction */
@@ -47,28 +73,34 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
              * back to the _xbegin() call */
             _xabort(0xff);
         }
+        stats.attempts++;
         /* If we explicitly aborted, someone has the lock */
         if ((status & _XABORT_EXPLICIT) && _XABORT_CODE(status) == 0xff) {
             lock->spin_until_free();
-        /* If RETRY and CAPACITY are NOT set */
-        } else if (!(status & _XABORT_RETRY) && !(status & _XABORT_CAPACITY))
-            break;
-
+            stats.exp++;
+        } 
+        /* Retry */
+        if (status & _XABORT_RETRY){
+            stats.ret++;
+        }
         /* Conflict */
         if (status & _XABORT_CONFLICT) {
-            retry = NUM_RETRIES_CONFLICT;
-            /* Could do various kinds of backoff here. */
-            lock->spin_until_free();
+            stats.con++;
         /* Capacity */
-        } else if (status & _XABORT_CAPACITY) {
-            retry = NUM_RETRIES_CAPACITY;
-        /* Not a conflict or capacity, but RETRY must have been set */
-        } else {
-            retry = NUM_RETRIES_OTHER;
+        } if (status & _XABORT_CAPACITY) {
+            stats.cap++;
+        /* Nested fail*/
+        } if (status & _XABORT_NESTED) {
+            stats.nest++;
+        } 
+        /* Debug */
+        if (status & _XABORT_DEBUG){
+            stats.deb++;
         }
     }
 
     /* All else failed, use fall-back lock */
+    stats.fbl++;
     lock->acquire();
 
     return 0;
@@ -156,7 +188,7 @@ int futex_wait(std::atomic<int> *addr, int val, const struct timespec *to) {
     return sys_futex(addr, FUTEX_WAIT_PRIVATE, val, to, NULL, 0);
 }
 
-/* CONDVARS */
+/* CONDVARS (C++)*/
 std::condition_variable::condition_variable(){
     auto fut = reinterpret_cast<std::atomic<int>*>(this);
     (*fut) = 0;
@@ -185,6 +217,54 @@ void std::condition_variable::wait(std::unique_lock<std::mutex>& cv_m){
     futex_wait(fut,val,NULL);
     cv_m.lock();
 }
+
+/* CONDVARS (C) */
+
+#undef pthread_cond_init 
+int pthread_cond_init(pthread_cond_t * __restrict cond, const pthread_condattr_t * __restrict attr){
+    auto fut = reinterpret_cast<std::atomic<int>*>(cond);
+    (*fut) = 0;
+    return 0;
+}
+#undef pthread_cond_destroy 
+int pthread_cond_destroy(pthread_cond_t * cond){ return 0;}
+
+#undef pthread_cond_broadcast
+int pthread_cond_broadcast(pthread_cond_t * cond){
+    auto fut = reinterpret_cast<std::atomic<int>*>(cond);
+    (*fut)++;
+    futex_broadcast(fut);
+    return 0;
+}
+
+#undef pthread_cond_signal
+int pthread_cond_signal(pthread_cond_t * cond){
+    auto fut = reinterpret_cast<std::atomic<int>*>(cond);
+    (*fut)++;
+    futex_signal(fut);
+
+    return 0;
+}
+
+#undef pthread_cond_wait
+int pthread_cond_wait(pthread_cond_t * cond, pthread_mutex_t *mutex){
+    auto fut = reinterpret_cast<std::atomic<int>*>(cond);
+    int val = *fut;
+
+    pthread_mutex_unlock(mutex);
+    futex_wait(fut,val,NULL);
+    pthread_mutex_lock(mutex);
+
+    return 0;
+}
+
+#undef pthread_cond_timedwait 
+int pthread_cond_timedwait(pthread_cond_t * __restrict cond, pthread_mutex_t * __restrict mutex, 
+        const struct timespec * __restrict time){
+    fprintf(stderr,"pthread_cond_timedwait is unimplemented\n");
+    exit(1);
+}
+
 
 
 }// end extern c

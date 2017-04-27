@@ -27,14 +27,15 @@ void go() {
 
 void condvar_test(){
     std::cout << "Doing with simple condvar test\n";
-    std::thread threads[10];
-    // spawn 10 threads:
-    for (int i=0; i<10; ++i)
+    int num_threads = 2;
+    std::thread threads[num_threads];
+    // spawn num_threads threads:
+    for (int i=0; i<num_threads; ++i)
         threads[i] = std::thread(print_id,i);
-    std::cout << "10 threads ready to race...\n";
+    std::cout << num_threads <<" threads ready to race...\n";
     go();                       // go!
     // Join the threads
-    for (int i=0; i<10; ++i)
+    for (int i=0; i<num_threads; ++i)
         threads[i].join();
 }
 
@@ -53,13 +54,14 @@ void count(int id){
 }
 
 void lock_test(){
-    std::cout << "Counting to " << count_per_thread << " with 10 threads\n";
-    std::thread threads[10];
+    int num_threads = 4;
+    std::cout << "Counting to " << count_per_thread << " with "<<num_threads<<" threads\n";
+    std::thread threads[num_threads];
     pthread_mutex_init(&mutex,0);
-    // spawn 10 threads:
-    for (int i=0; i<10; ++i)
+    // spawn num_threads threads:
+    for (int i=0; i<num_threads; ++i)
         threads[i] = std::thread(count,i);
-    for (int i=0; i<10; ++i)
+    for (int i=0; i<num_threads; ++i)
         threads[i].join();
 
     std::cout << "Final value: "<< count_val << "\n";
@@ -110,7 +112,7 @@ int main(){
     //std::cout << "int size: " << sizeof(int) << std::endl;
     //std::cout << "spin_lock size: " << sizeof(spin_lock) << std::endl;
     //std::cout << "pthread_mutex_t: " << sizeof(pthread_mutex_t) << std::endl;
-    //lock_test();
+    lock_test();
     //rwlock_test();
-    condvar_test();
+    //condvar_test();
 }
