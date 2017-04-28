@@ -1,6 +1,4 @@
-
 CXX = g++
-CC = gcc
 CFLAGS = -std=c++14 -Wall -g -O0
 LDFLAGS = -lunwind -L/lib/x86_64-linux-gnu/liblzma.so.5 
 TSX_FLAGS = -I tsx-tools/include
@@ -16,7 +14,7 @@ LD_STR = LD_PRELOAD="$(HOME)/RocksDB-TSX/$(PTHREAD_LIBNAME)"
 TSX_LD = LD_PRELOAD="$(HOME)/RocksDB-TSX/$(TSX_LIBNAME)"
 DB_BENCH = ./rocksdb/db_bench
 
-all: test
+all: tsx_lib pthread_lib
 
 
 pthread_test: pthread_test.cpp
@@ -50,15 +48,15 @@ fill: $(PTHREAD_LIBNAME)
 fill_true: $(PTHREAD_LIBNAME)
 	$(DB_BENCH) --benchmarks=fillrandom
 
+readrandomwriterandom_tsx: $(PTHREAD_LIBNAME)
+	$(TSX_LD) $(DB_BENCH) --benchmarks=readrandomwriterandom -num 100000 -threads 4
+
 readrandomwriterandom: $(PTHREAD_LIBNAME)
 	cat /dev/null > $(LOG_FILE)
 	$(LD_STR) $(DB_BENCH) --benchmarks=readrandomwriterandom -num 100000 -threads 4
 
 readrandomwriterandom_true: $(PTHREAD_LIBNAME)
 	$(DB_BENCH) --benchmarks=readrandomwriterandom -num 100000 -threads 4
-
-no_interpose:
-	$(DB_BENCH) $(BENCH_PARAMS_READ)
 
 clean:
 	-rm -f $(PTHREAD_LIBNAME) pthread_test junction_test 2> /dev/null
