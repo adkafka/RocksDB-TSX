@@ -21,8 +21,10 @@ extern "C" {
 class TLS_attributes{
     public:
         int locks, attempts, exp, ret, con, cap, deb, nest, fbl, other;
+        int fut_w, fut_s, fut_b;
         TLS_attributes(){
             locks=0, attempts=0; exp=0; ret=0; con=0; cap=0; deb=0; nest=0; fbl=0; other=0;
+            fut_w=0,fut_s=0;fut_b=0;
         }
         ~TLS_attributes(){
             printf("Thread_local aborts: \n\
@@ -34,9 +36,14 @@ class TLS_attributes{
                     Capacity:\t%d\n\
                     Debug:\t%d\n\
                     Nested:\t%d\n\
-                    Fallback:\t%d\n\
-                    Other:\t%d\n",
-                    locks,attempts,exp,ret,con,cap,deb,nest,fbl,other);
+                    Other:\t%d\n\
+                    Fallback:\t%d\n",
+                    locks,attempts,exp,ret,con,cap,deb,nest,other,fbl);
+            printf("Cond_Var usage: \n\
+                    Waits:\t%d\n\
+                    Signals:\t%d\n\
+                    Bcasts:\t%d\n",
+                    fut_w,fut_s,fut_b);
         }
 };
 
@@ -65,6 +72,7 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
     stats.locks++;
 
     for (i = 0; i < retry; i++) {
+        stats.attempts++;
         if ((status = _xbegin()) == _XBEGIN_STARTED) {
             /* If lock is not held, we succesfully started a transaction */
             if (!lock->held())
@@ -86,16 +94,22 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
         /* Conflict */
         if (status & _XABORT_CONFLICT) {
             stats.con++;
+        }
         /* Capacity */
-        } if (status & _XABORT_CAPACITY) {
+        if (status & _XABORT_CAPACITY) {
             stats.cap++;
+        }
         /* Nested fail*/
-        } if (status & _XABORT_NESTED) {
+        if (status & _XABORT_NESTED) {
             stats.nest++;
         } 
         /* Debug */
         if (status & _XABORT_DEBUG){
             stats.deb++;
+        }
+        if (status == 0){
+            stats.other++;
+            break;
         }
     }
 
@@ -121,8 +135,9 @@ int pthread_mutex_unlock(pthread_mutex_t * mutex){
 
 #undef pthread_mutex_init 
 int pthread_mutex_init(pthread_mutex_t * mutex, const pthread_mutexattr_t *mutexattr){ 
+    memset(mutex,0,sizeof(pthread_mutex_t));
     spin_lock* lock = reinterpret_cast<spin_lock*>(mutex);
-    memset(lock,0,sizeof(pthread_mutex_t));
+    lock->release();
     return 0;
 }
 
@@ -179,12 +194,15 @@ int futex_wake(std::atomic<int> *addr, int nr) {
     return sys_futex(addr, FUTEX_WAKE_PRIVATE, nr, NULL, NULL, 0);
 }
 int futex_signal(std::atomic<int> *addr) {
+    stats.fut_s++;
     return (futex_wake(addr, 1) >= 0) ? 0 : -1;
 }
 int futex_broadcast(std::atomic<int> *addr) {
+    stats.fut_b++;
     return (futex_wake(addr, INT_MAX) >= 0) ? 0 : -1;
 }
 int futex_wait(std::atomic<int> *addr, int val, const struct timespec *to) {
+    stats.fut_w++;
     return sys_futex(addr, FUTEX_WAIT_PRIVATE, val, to, NULL, 0);
 }
 

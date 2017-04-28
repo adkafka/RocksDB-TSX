@@ -65,6 +65,7 @@ void log_func(const char* func_name, const char * format=NULL ...){
             va_list args;
             va_start(args,format);
             vsnprintf(buffer,256,format,args);
+            buffer[255]='\0';
             (*ofs) << " " << buffer;
         }
         (*ofs) << "\n";
