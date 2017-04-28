@@ -160,7 +160,9 @@ int pthread_mutex_destroy(pthread_mutex_t * mutex){ return 0; }
 
 #undef pthread_rwlock_init 
 int pthread_rwlock_init(pthread_rwlock_t* __restrict rwlock, const pthread_rwlockattr_t * __restrict rwattr){
-    pthread_mutex_init(reinterpret_cast<pthread_mutex_t*>(rwlock),0);
+    memset(rwlock,0,sizeof(pthread_rwlock_t));
+    spin_lock* lock = reinterpret_cast<spin_lock*>(rwlock);
+    lock->release();
     return 0;
 }
 

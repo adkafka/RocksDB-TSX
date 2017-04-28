@@ -41,22 +41,5 @@ test_log: $(PTHREAD_LIBNAME) pthread_test
 	$(LD_STR) ./pthread_test
 	cat $(LOG_FILE)
 
-fill: $(PTHREAD_LIBNAME)
-	cat /dev/null > $(LOG_FILE)
-	$(LD_STR) $(DB_BENCH) --benchmarks=fillrandom
-
-fill_true: $(PTHREAD_LIBNAME)
-	$(DB_BENCH) --benchmarks=fillrandom
-
-readrandomwriterandom_tsx: $(PTHREAD_LIBNAME)
-	$(TSX_LD) $(DB_BENCH) --benchmarks=readrandomwriterandom -num 100000 -threads 4
-
-readrandomwriterandom: $(PTHREAD_LIBNAME)
-	cat /dev/null > $(LOG_FILE)
-	$(LD_STR) $(DB_BENCH) --benchmarks=readrandomwriterandom -num 100000 -threads 4
-
-readrandomwriterandom_true: $(PTHREAD_LIBNAME)
-	$(DB_BENCH) --benchmarks=readrandomwriterandom -num 100000 -threads 4
-
 clean:
-	-rm -f $(PTHREAD_LIBNAME) pthread_test junction_test 2> /dev/null
+	-rm -f $(TSX_LIBNAME) $(PTHREAD_LIBNAME) pthread_test junction_test 2> /dev/null

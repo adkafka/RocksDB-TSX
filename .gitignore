@@ -2,3 +2,5 @@ mutex_usage.log*
 backtrace.o
 *.so
 pthread_test
+test/
+strace.txt
