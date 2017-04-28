@@ -2,19 +2,16 @@
 Adam Kafka and Ryan Santos
 
 ## Next steps
-- Interposition on pthread library (at least the funcions that rocksDB uses, see 'Gathering the functions')
-    - Verify we are doing this on all functions we identified as 'interesting'
-    - Log on the actual benchmarks, get preliminary data (how many locks, which ops are most common)
-    - Make pretty graphs :)
+- Make graphs from backtrace info
 - Replace usage of locks with naïve spin locks (what about condvars?) to get a useful worst-case data point (what if all transactions fail)
-- Use TSX to replace Locks (pthread\_mutex and pthread\_rw\_lock)
-- Read spear's paper and replace Cond Vars...
+- Fix TSX high abort rate
+- Fix condvars so they use onCommit to wake
 - Run benchmark to test it and get performance results
 - Tweak params (how many aborts until fall-back) to get more results
 
 ## Design of Lock Elision
 ### Locks
-We will use TSX RTM to perform lock elision, using a spin lock as a fallback mechanism. I think the best option (to get a spin lock), is to use the pthread\_mutex\_t pointer itself. Reinterpert cast it to what we need (an atomic bool) so that we can use it as a spin lock. This will work as long the size of our spin lock is less than the size of pthread\_mutex\_t. Another option would be to store an in memory map of pthread\_mutex\_t to spin lock... but this has many downsides, though may be unavoidable in CondVars...
+We will use TSX RTM to perform lock elision, using a spin lock as a fallback mechanism. The best option (to get a spin lock), is to use the pthread\_mutex\_t pointer itself. Reinterpert cast it to what we need (an atomic bool) so that we can use it as a spin lock. This will work as long the size of our spin lock is less than the size of pthread\_mutex\_t. 
 
 References for this solution include:
 - [tsx-tools](https://github.com/andikleen/tsx-tools/blob/master/locks/spin-rtm.c)
@@ -27,12 +24,16 @@ References for this solution include:
 - [Spin lock in c++](http://en.cppreference.com/w/cpp/atomic/atomic_flag)
 
 ### RWLocks
-I believe we can treat RW locks the same as normal locks, because TM will catch any writes and cause reads (and other writes) to abort. RW locks are designed for mutliple readers, one writer. TM will place the memory in the corresponding read/write set and detect any issues via cache coherence.
+We can treat RW locks the same as normal locks, because TM will catch any writes and cause reads (and other writes) to abort. RW locks are designed for mutliple readers, one writer. TM will place the memory in the corresponding read/write set and detect any issues via cache coherence.
 
 ### CondVars
-The best option will be to base our implementation off of [Wang and Spear's work](http://transact2014.cse.lehigh.edu/wang2.pdf). The corresponding [github link](https://github.com/mfs409/transmem/tree/master/libs/libtmcondvar) & [another repo](https://github.com/mfs409/libcondvar) will be very valuable as well. We will need a per thread link list of semaphores (construct it during library construction). We will have to be careful about when we 'commit' our transaction. I think we would need a thread-safe map to map the condition variable ptr to our linked list (pthread\_cond\_t will be too small)... 
+The simplest (and still efficient) option for implementing condvars will be to use futexes to signal/broadcast/wait. The guide [here](https://www.remlab.net/op/futex-condvar.shtml) is sufficient. I think we will have to settle for the simple solution which technically has a bug, but it depends on exactly 2^32 signals with no wait to happen, to result in a signal is lost. We will not be experiencing 2^32 signals in the lifetime of out program, so I am happy with this solution. The author provides a fix, but it would involvemodified a shared state in the condition variable... On second thought this might be fine. I will come back to this later. We will need to implement some kind of onCommit handler, so that wakes can happen after the commit.
 
-Other option would be based off [Richard Yoo paper](http://pages.cs.wisc.edu/~rajwar/papers/SC13_TSX.pdf). Uses Linux futex to atomically put self on wait list. Signal thread registers a callback if it signals. Thread will execute callback to update futex. BusyWait did the best in the paper, so we should impliment that if we can. Ideally, we would implement both and compare...
+References:
+- [Semaphores](http://www.csc.villanova.edu/~mdamian/threads/posixsem.html)
+- [Transaction-Friendly CondVars](http://transact2014.cse.lehigh.edu/wang2.pdf)
+- [libtmcondvar](https://github.com/mfs409/transmem/blob/master/libs/libtmcondvar/tmcondvar.cc)
+- [libcondvar](https://github.com/mfs409/libcondvar)
 
 ### Reusing pthread types
 We should use the parameters to the pthread functions to store the data we need to add on. For example, pthread acquire should reinterpert cast the pthread\_mutex\_t pointer to a spin\_lock pointer that we can use as a fall-back lock. Reusing condvar will be a lot harder, cause we need to store more information. As long as we cast it to a smaller or equal size, we should be OK. It will be necessary to interpose on ALL functions used to prohibit any other functions writing to this data.
@@ -66,25 +67,33 @@ $ cd junction
 $ mkdir build
 $ cd build
 $ mkdir install # Where the headers and libs will be sent
-$ cmake -DCMAKE_INSTALL_PREFIX=install -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ..
+$ cmake -DCMAKE_INSTALL_PREFIX=install ..
 $ make install
 $ cd ../../
 ```
 
-- Run ``make all`` from the rocksdb repository
+- Rocks DB needs the following dependencies:
+    - libgflags-dev
+    - libsnappy-dev
+- Run ``make all`` or ``make release`` from the rocksdb repository
 
+- To compile our program:
+    - We need the dependency libunwind-dev
+    - ``make`` will compile both libraries (``make tsx_lib`` and ``make pthread_lib``)
+    - ``make readrandomwriterandom_tsx`` Will run the random reads and writes benchmark with our tsx library.
+        - This should be done after the database is loaded with ``make fill_true``
 
-If missing dependencies and don't have root access:
-- Follow instructions from 'https://gist.github.com/achalddave/7f7323a36f85b6c6dd64'
-- Compile RocksDB ``LDFLAGS="-L${HOME}/local/lib" CFLAGS="-I${HOME}/local/include" make``
+### Suggestion
+- Use backtrace on other aborts for insight
+- There is a bug in TSX... maybe it is tickling it
+- TLB misses -> context switch -> context swtich
+- Try sequential
 
-### Using gdb
-1. Run ``gdb target``.
-1. In gdb, set up the environmnet variables:
-    - ``set env LD_PRELOAD ${HOME}/RocksDB-TSX/libmypthread.so``
 
 ### Design considerations (Meeting with spear)
 - Lemming problem -> good to talk about during presentation
+- Use of pthread\_mutex/rwlock/cond types are not great for TSX. They all have sizes < 64 bytes, which is the cache line size. So any modifications of memory within the cache line, may cause spurious aborts. We shoud look into the alignment constraints of these types to see if it is only varaibles after, or if variables before can also affect cache line. 
+    - What if we make small modifications to rocksDB to increase their size and fit our alignemnt constraingts? I'm not sure how we could do this though.
 - Capture all pthread mutex ops
     - CondVars? - Richard Yoo paper 2013, Supercomputing
         - One option, come back to this issue
