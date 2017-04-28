@@ -74,14 +74,17 @@ $ cd ../../
 
 - Rocks DB needs the following dependencies:
     - libgflags-dev
-    - libsnappy-dev
+    - libsnappy-dev (for compression)
 - Run ``make all`` or ``make release`` from the rocksdb repository
 
 - To compile our program:
     - We need the dependency libunwind-dev
     - ``make`` will compile both libraries (``make tsx_lib`` and ``make pthread_lib``)
-    - ``make readrandomwriterandom_tsx`` Will run the random reads and writes benchmark with our tsx library.
+    - Use the 'test.sh' script to run a simple sequential load, then read/write test
         - This should be done after the database is loaded with ``make fill_true``
+        - ``test.sh`` will run normally
+        - ``test.sh tsx`` will use our TSX library (libtsx.so)
+        - ``test.sh bt`` will run a backtrace log on the methods we interpose (libmypthread.so)
 
 ### Suggestion
 - Use backtrace on other aborts for insight
