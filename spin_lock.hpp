@@ -2,40 +2,45 @@
 
 /* TODO, inline functions for perf */
 
-/* Useful in a spin lock to pause */
-#define pause() asm volatile("pause" ::: "memory")
+/* Useful in a spin lock to pause 
+ * Apparently, a pause causes an abort... 
+ * I am taking this out for now, but when waiting on 
+ * the spin lock, we are already in abort handler code*/
+
+//#define pause() asm volatile("pause" ::: "memory")
 
 class spin_lock{
 
     private:
-        std::atomic<bool> tm_lock;
+        int val;
 
     public: 
-        spin_lock(): tm_lock(false){ }
+        spin_lock(): val(0){ }
 
-        void acquire() {
-            do {
-                /* While lock is held, pause */
-                spin_until_free();
-            } while (tm_lock.exchange(true));
+        inline void acquire() {
+            while(__sync_lock_test_and_set(&val,1)){
+                //Nothing
+            }
         }
 
-        void spin_until_free(){
-            /* While lock is held, pause */
-            while (tm_lock.load())
-                pause();
+        inline void spin_until_free(){
+            while (val==1)
+                ;
         }
 
-        void release() {
-            tm_lock.store(false, std::memory_order_release);
+        inline void release() {
+            __sync_synchronize();
+            val = 0;
         }
 
-        bool held() {
-            return tm_lock.load();
+        inline bool held() {
+            return val==1;
         }
 
+        /*
         bool held_relaxed() {
             return tm_lock.load(std::memory_order_relaxed);
         }
+        */
 
 };
