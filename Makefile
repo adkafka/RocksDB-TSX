@@ -1,6 +1,7 @@
 CXX = g++
-CFLAGS = -std=c++14 -Wall -g -O0 -mrtm
+CFLAGS = -std=c++14 -Wall -g -O2 -mrtm
 LDFLAGS = -lunwind -L/lib/x86_64-linux-gnu/liblzma.so.5 
+
 TSX_FLAGS = -I tsx-tools/include
 PTHREAD_LIBNAME = libmypthread.so
 TSX_LIBNAME = libtsx.so
