@@ -8,7 +8,8 @@
 #include <limits.h> //INT_MAX
 #include <condition_variable> //condvar class
 
-#include "rtm.h" //tsx stuff
+#include <immintrin.h>
+//#include "rtm.h" //tsx stuff
 #include "spin_lock.hpp"
 
 /* How many aborts until we use fall-back lock */
@@ -16,15 +17,35 @@
 #define NUM_RETRIES_CONFLICT 3 /* Fail due to conflict (_XABORT_CONFLICT) */
 #define NUM_RETRIES_OTHER 4    /* Failed for any other reason... */
 
-extern "C" {
+/* Home many on_commits we can store */
+#define ON_COMMIT_LEN 16
 
+#define CACHE_SIZE 64
+#define CACHE_ALIGNED __attribute__((aligned(CACHE_SIZE)))
+
+
+__attribute__((constructor))
+void init(void) { 
+}
+
+__attribute__((destructor))
+void fini(void) { 
+}
+
+/* Thread local anonymous namespace */
+namespace {
+    thread_local bool in_tsx(false);
+}
+
+
+/* Stat tracking */
 class TLS_attributes{
     public:
         int locks, attempts, exp, ret, con, cap, deb, nest, fbl, other;
-        int fut_w, fut_s, fut_b;
+        int fut_w, fut_s, fut_b, calb;
         TLS_attributes(){
             locks=0, attempts=0; exp=0; ret=0; con=0; cap=0; deb=0; nest=0; fbl=0; other=0;
-            fut_w=0,fut_s=0;fut_b=0;
+            fut_w=0,fut_s=0;fut_b=0;calb=0;
         }
         ~TLS_attributes(){
             printf("Thread_local aborts: \n\
@@ -42,22 +63,85 @@ class TLS_attributes{
             printf("Cond_Var usage: \n\
                     Waits:\t%d\n\
                     Signals:\t%d\n\
-                    Bcasts:\t%d\n",
-                    fut_w,fut_s,fut_b);
+                    Bcasts:\t%d\n\
+                    Callback:\t%d\n",
+                    fut_w,fut_s,fut_b,calb);
         }
-};
+} CACHE_ALIGNED;
 
-volatile thread_local TLS_attributes stats;
+/** OnCommit Section **/
+class FuncArg{
+    public:
+        void (*func)(void*);
+        void* arg;
+        FuncArg():func(nullptr),arg(nullptr){}
+        FuncArg(void (*func_)(void*),void *arg_): 
+            func(func_), arg(arg_){}
+        void run(){
+            func(arg);
+        }
+} CACHE_ALIGNED;
 
-__attribute__((constructor))
-void init(void) { 
+class OnCommit{
+    public:
+        OnCommit():funcs_len(0){}
+        ~OnCommit(){RunAll();}
+        /* Return 0 if list is full, 1 on success */
+        int Add(void (*func)(void*),void* arg){
+            /* If we are not in a tsx transaction, we have to
+             * execute the function now. There may be another syscall
+             * (pthread_join) in the same critical section, so we 
+             * cannot change the order of these operations by defering 
+             * only this one... */
+            if(!_xtest()){
+                func(arg);
+                return 1;
+            }
+            if(funcs_len==ON_COMMIT_LEN-1){
+                printf("ERROR, too many oncommit handlers\n");
+                return 0;
+            }
+            funcs[funcs_len].func = func;
+            funcs[funcs_len].arg = arg;
+            funcs_len++;
+            return 1;
+        }
+        void RunAll(){
+            for(unsigned i=0;i<funcs_len;i++)
+                funcs[i].run();
+            funcs_len = 0;
+        }
+    private:
+        FuncArg funcs[ON_COMMIT_LEN];
+        unsigned funcs_len;
+} CACHE_ALIGNED;
+
+/* More anonymous storage */
+namespace {
+    thread_local TLS_attributes stats;
+    thread_local OnCommit on_commit_list;
 }
 
-__attribute__((destructor))
-void fini(void) { 
+
+/** String Comparison... **/
+
+int strcmp(const char *s1, const char *s2){
+    const unsigned char *p1 = (const unsigned char *)s1;
+    const unsigned char *p2 = (const unsigned char *)s2;
+
+    while (*p1 != '\0') {
+        if (*p2 == '\0') return  1;
+        if (*p2 > *p1)   return -1;
+        if (*p1 > *p2)   return  1;
+
+        p1++;
+        p2++;
+    }
+
+    if (*p2 != '\0') return -1;
+
+    return 0;
 }
-
-
 
 /** PTHREAD_MUTEX METHODS **/
 
@@ -72,8 +156,8 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
     stats.locks++;
 
     for (i = 0; i < retry; i++) {
-        stats.attempts++;
         if ((status = _xbegin()) == _XBEGIN_STARTED) {
+            stats.attempts++;
             /* If lock is not held, we succesfully started a transaction */
             if (!lock->held())
                 return 1;
@@ -129,6 +213,10 @@ int pthread_mutex_unlock(pthread_mutex_t * mutex){
     /* If someone has the lock, it must be us, so we release */
     else
         lock->release();
+
+    in_tsx=false;
+
+    on_commit_list.RunAll();
 
     return 0;
 }
@@ -195,13 +283,15 @@ static int sys_futex(std::atomic<int> *uaddr, int futex_op, int val,
 int futex_wake(std::atomic<int> *addr, int nr) {
     return sys_futex(addr, FUTEX_WAKE_PRIVATE, nr, NULL, NULL, 0);
 }
-int futex_signal(std::atomic<int> *addr) {
+void futex_signal(void* arg) {
+    auto addr = reinterpret_cast<std::atomic<int>*>(arg);
     stats.fut_s++;
-    return (futex_wake(addr, 1) >= 0) ? 0 : -1;
+    futex_wake(addr, 1);
 }
-int futex_broadcast(std::atomic<int> *addr) {
+void futex_broadcast(void* arg) {
+    auto addr = reinterpret_cast<std::atomic<int>*>(arg);
     stats.fut_b++;
-    return (futex_wake(addr, INT_MAX) >= 0) ? 0 : -1;
+    futex_wake(addr, INT_MAX);
 }
 int futex_wait(std::atomic<int> *addr, int val, const struct timespec *to) {
     stats.fut_w++;
@@ -219,14 +309,16 @@ std::condition_variable::~condition_variable(){
 
 void std::condition_variable::notify_all(){
     auto fut = reinterpret_cast<std::atomic<int>*>(this);
+    stats.calb++;
     (*fut)++;
-    futex_broadcast(fut);
+    on_commit_list.Add(futex_broadcast,fut);
 }
 
 void std::condition_variable::notify_one(){
     auto fut = reinterpret_cast<std::atomic<int>*>(this);
+    stats.calb++;
     (*fut)++;
-    futex_signal(fut);
+    on_commit_list.Add(futex_signal,fut);
 }
 
 void std::condition_variable::wait(std::unique_lock<std::mutex>& cv_m){
@@ -252,17 +344,18 @@ int pthread_cond_destroy(pthread_cond_t * cond){ return 0;}
 #undef pthread_cond_broadcast
 int pthread_cond_broadcast(pthread_cond_t * cond){
     auto fut = reinterpret_cast<std::atomic<int>*>(cond);
+    stats.calb++;
     (*fut)++;
-    futex_broadcast(fut);
+    on_commit_list.Add(futex_broadcast,fut);
     return 0;
 }
 
 #undef pthread_cond_signal
 int pthread_cond_signal(pthread_cond_t * cond){
     auto fut = reinterpret_cast<std::atomic<int>*>(cond);
+    stats.calb++;
     (*fut)++;
-    futex_signal(fut);
-
+    on_commit_list.Add(futex_signal,fut);
     return 0;
 }
 
@@ -284,7 +377,3 @@ int pthread_cond_timedwait(pthread_cond_t * __restrict cond, pthread_mutex_t * _
     fprintf(stderr,"pthread_cond_timedwait is unimplemented\n");
     exit(1);
 }
-
-
-
-}// end extern c
