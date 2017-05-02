@@ -4,3 +4,4 @@ backtrace.o
 pthread_test
 test/
 strace.txt
+perf.data*
