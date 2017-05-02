@@ -45,17 +45,17 @@ SHARED_PARAMS='\
     --min_level_to_compress=2 \
     --max_bytes_for_level_base=10485760'
 
-#num=100000
-#echo "Load $num keys sequentially into database....."
-#./rocksdb/db_bench \
-#    --benchmarks=fillseq \
-#    --num=$num \
-#    --threads=1 \
-#    --disable_wal=1 \
-#    --use_existing_db=0 \
-#    ${SHARED_PARAMS}
+num=100000
+echo "Load $num keys sequentially into database....."
+./rocksdb/db_bench \
+    --benchmarks=fillseq \
+    --num=$num \
+    --threads=1 \
+    --disable_wal=1 \
+    --use_existing_db=0 \
+    ${SHARED_PARAMS}
 
-num=10000
+num=100000
 threads=4
 echo "Reading while writing $num keys in database using $threads threads in random order...."
 if [[ $1 == "tsx" ]]; then

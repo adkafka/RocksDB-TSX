@@ -125,6 +125,7 @@ namespace {
 
 /** String Comparison... **/
 
+#undef strcmp
 int strcmp(const char *s1, const char *s2){
     const unsigned char *p1 = (const unsigned char *)s1;
     const unsigned char *p2 = (const unsigned char *)s2;
@@ -160,7 +161,7 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
             stats.attempts++;
             /* If lock is not held, we succesfully started a transaction */
             if (!lock->held())
-                return 1;
+                return 0;
             /* Otherwise, abort and deal with below. Note that an abort returns
              * back to the _xbegin() call */
             _xabort(0xff);
