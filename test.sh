@@ -17,12 +17,6 @@ mkdir test
 
 LOG_FILE="mutex_usage.log"
 
-if [[ $1 == "tsx" ]]; then
-    export "LD_PRELOAD=./libtsx.so"
-elif [[ $1 == "bt" ]]; then
-    cat /dev/null > ${LOG_FILE}
-    export "LD_PRELOAD=./libmypthread.so"
-fi
 
 SHARED_PARAMS='\
     --disable_seek_compaction=1 \
@@ -51,19 +45,29 @@ SHARED_PARAMS='\
     --min_level_to_compress=2 \
     --max_bytes_for_level_base=10485760'
 
-echo "Load 100K keys sequentially into database....."
-num=100000
-${PRE} ./rocksdb/db_bench \
-    --benchmarks=fillseq \
-    --num=$num \
-    --threads=1 \
-    --disable_wal=1 \
-    --use_existing_db=0 \
-    ${SHARED_PARAMS}
+#num=100000
+#echo "Load $num keys sequentially into database....."
+#./rocksdb/db_bench \
+#    --benchmarks=fillseq \
+#    --num=$num \
+#    --threads=1 \
+#    --disable_wal=1 \
+#    --use_existing_db=0 \
+#    ${SHARED_PARAMS}
 
-echo "Reading while writing 1K keys in database in random order...."
-num=1000
-threads=2
+num=10000
+threads=4
+echo "Reading while writing $num keys in database using $threads threads in random order...."
+if [[ $1 == "tsx" ]]; then
+    export "LD_PRELOAD=./libtsx.so"
+elif [[ $1 == "bt" ]]; then
+    cat /dev/null > ${LOG_FILE}
+    export "LD_PRELOAD=./libmypthread.so"
+elif [[ $1 == "perf" ]]; then
+    #PRE="perf record -e cpu/tx-abort/pp "
+    PRE="perf record -g --transaction --weight -e cpu/tx-abort/pp "
+    export "LD_PRELOAD=./libtsx.so"
+fi
 ${PRE} ./rocksdb/db_bench \
     --benchmarks=readwhilewriting \
     --num=$num \
