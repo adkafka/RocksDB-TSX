@@ -9,7 +9,6 @@
 #include <condition_variable> //condvar class
 
 #include <immintrin.h>
-//#include "rtm.h" //tsx stuff
 #include "spin_lock.hpp"
 
 /* How many aborts until we use fall-back lock */
@@ -32,12 +31,6 @@ __attribute__((destructor))
 void fini(void) { 
 }
 
-/* Thread local anonymous namespace */
-namespace {
-    thread_local bool in_tsx(false);
-}
-
-
 /* Stat tracking */
 class TLS_attributes{
     public:
@@ -48,6 +41,8 @@ class TLS_attributes{
             fut_w=0,fut_s=0;fut_b=0;calb=0;
         }
         ~TLS_attributes(){
+            //printf("Locks called:\t%d\nFallbacks:\t%d\n",locks,fbl);
+            /*
             printf("Thread_local aborts: \n\
                     Locks:\t%d\n\
                     Attempts:\t%d\n\
@@ -66,6 +61,7 @@ class TLS_attributes{
                     Bcasts:\t%d\n\
                     Callback:\t%d\n",
                     fut_w,fut_s,fut_b,calb);
+                    */
         }
 } CACHE_ALIGNED;
 
@@ -122,27 +118,6 @@ namespace {
     thread_local OnCommit on_commit_list;
 }
 
-
-/** String Comparison... **/
-
-#undef strcmp
-int strcmp(const char *s1, const char *s2){
-    const unsigned char *p1 = (const unsigned char *)s1;
-    const unsigned char *p2 = (const unsigned char *)s2;
-
-    while (*p1 != '\0') {
-        if (*p2 == '\0') return  1;
-        if (*p2 > *p1)   return -1;
-        if (*p1 > *p2)   return  1;
-
-        p1++;
-        p2++;
-    }
-
-    if (*p2 != '\0') return -1;
-
-    return 0;
-}
 
 /** PTHREAD_MUTEX METHODS **/
 
@@ -214,8 +189,6 @@ int pthread_mutex_unlock(pthread_mutex_t * mutex){
     /* If someone has the lock, it must be us, so we release */
     else
         lock->release();
-
-    in_tsx=false;
 
     on_commit_list.RunAll();
 
