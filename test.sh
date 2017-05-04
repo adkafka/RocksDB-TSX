@@ -8,7 +8,7 @@
 # ./test.sh
 # Run with tsx lib (libtsx.so)
 # ./test.sh tsx
-# Perform backtrace logging (libmypthread.so)
+# Perform backtrace logging (libbt.so)
 # ./test.sh bt
 
 echo "Cleaning test directory (test/)"
@@ -46,7 +46,7 @@ if [[ $1 == "tsx" ]]; then
     export "LD_PRELOAD=./libtsx.so"
 elif [[ $1 == "bt" ]]; then
     cat /dev/null > ${LOG_FILE}
-    export "LD_PRELOAD=./libmypthread.so"
+    export "LD_PRELOAD=./libbt.so"
 elif [[ $1 == "spin" ]]; then
     export "LD_PRELOAD=./libspin.so"
 elif [[ $1 == "perf" ]]; then

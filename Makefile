@@ -2,7 +2,7 @@ CXX = g++
 CFLAGS = -std=c++14 -Wall -g -O2 -mrtm
 LDFLAGS = -lunwind -L/lib/x86_64-linux-gnu/liblzma.so.5 
 
-PTHREAD_LIBNAME = libmypthread.so
+PTHREAD_LIBNAME = libbt.so
 TSX_LIBNAME = libtsx.so
 SPIN_LIBNAME = libspin.so
 LOG_FILE = mutex_usage.log
