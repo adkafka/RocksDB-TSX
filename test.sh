@@ -13,59 +13,51 @@
 
 echo "Cleaning test directory (test/)"
 rm -rf test/
-mkdir test
+#mkdir test
 
 LOG_FILE="mutex_usage.log"
 
 
 SHARED_PARAMS='\
-    --disable_seek_compaction=1 \
-    --mmap_read=0 \
-    --key_size=16 \
-    --value_size=800 \
-    --block_size=65536 \
-    --cache_size=1048576 \
-    --bloom_bits=10 \
-    --cache_numshardbits=6 \
-    --open_files=200 \
-    --verify_checksum=1 \
+    --disable_auto_compactions=true \
+    --key_size=8 \
+    --value_size=256 \
+    --block_size=262144 \
     --db=./test \
-    --sync=0 \
     --compression_type=none \
     --compression_ratio=1 \
-    --write_buffer_size=100000 \
-    --target_file_size_base=100000 \
-    --max_write_buffer_number=10 \
-    --max_background_compactions=3 \
-    --level0_file_num_compaction_trigger=1000 \
-    --level0_slowdown_writes_trigger=1000 \
-    --level0_stop_writes_trigger=1000 \
-    --num_levels=2 \
-    --delete_obsolete_files_period_micros=300000 \
-    --min_level_to_compress=2 \
-    --max_bytes_for_level_base=10485760'
+    --num_levels=4'
 
-num=100000
+num=250000
 echo "Load $num keys sequentially into database....."
 ./rocksdb/db_bench \
-    --benchmarks=fillseq \
+    --benchmarks=fillrandom \
     --num=$num \
     --threads=1 \
     --disable_wal=1 \
     --use_existing_db=0 \
     ${SHARED_PARAMS}
-
-num=100000
-threads=4
-echo "Reading while writing $num keys in database using $threads threads in random order...."
+#echo "Copying database to test dir"
+#cp -r test.2000000 test
+num=500000
+threads=${2:-1}
+echo "Reading and writing randomly $num keys in database using $threads threads in random order...."
 if [[ $1 == "tsx" ]]; then
     export "LD_PRELOAD=./libtsx.so"
 elif [[ $1 == "bt" ]]; then
     cat /dev/null > ${LOG_FILE}
     export "LD_PRELOAD=./libmypthread.so"
+elif [[ $1 == "spin" ]]; then
+    export "LD_PRELOAD=./libspin.so"
 elif [[ $1 == "perf" ]]; then
-    #PRE="perf record -e cpu/tx-abort/pp "
+    # Record all transaction events for later analysis with 'report'
     PRE="perf record -g --transaction --weight -e cpu/tx-abort/pp "
+    export "LD_PRELOAD=./libtsx.so"
+elif [[ $1 == "report" ]]; then
+    perf report --sort symbol,transaction,weight
+elif [[ $1 == "rate" ]]; then
+    # Give abort/start stats
+    PRE="perf stat -e tx-abort,tx-start,tx-commit "
     export "LD_PRELOAD=./libtsx.so"
 fi
 ${PRE} ./rocksdb/db_bench \
