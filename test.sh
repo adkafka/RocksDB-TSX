@@ -57,13 +57,13 @@ elif [[ $1 == "report" ]]; then
     perf report --sort symbol,transaction,weight
 elif [[ $1 == "rate" ]]; then
     # Give abort/start stats
-    PRE="perf stat -e tx-abort,tx-start,tx-commit "
+    PRE="perf stat -e tx-abort,tx-start,tx-commit,tx-conflict,tx-capacity "
     export "LD_PRELOAD=./libtsx.so"
 fi
 ${PRE} ./rocksdb/db_bench \
     --benchmarks=readwhilewriting \
     --num=$num \
     --threads=$threads \
-    --disable_wal=0 \
+    --disable_wal=1 \
     --use_existing_db=1 \
     ${SHARED_PARAMS}

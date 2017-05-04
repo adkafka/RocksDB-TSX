@@ -70,7 +70,7 @@ void count(int id){
 }
 
 void lock_test(){
-    int num_threads = 4;
+    int num_threads = 16;
     std::cout << "Counting to " << count_per_thread << " with "<<num_threads<<" threads\n";
     std::thread threads[num_threads];
     pthread_mutex_init(&mutex,0);
@@ -128,7 +128,7 @@ int main(){
     //std::cout << "int size: " << sizeof(int) << std::endl;
     //std::cout << "spin_lock size: " << sizeof(spin_lock) << std::endl;
     //std::cout << "pthread_mutex_t: " << sizeof(pthread_mutex_t) << std::endl;
-    //lock_test();
+    lock_test();
     //rwlock_test();
-    condvar_test();
+    //condvar_test();
 }

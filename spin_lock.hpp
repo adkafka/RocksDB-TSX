@@ -1,7 +1,5 @@
 #include <atomic>
 
-/* TODO, inline functions for perf */
-
 /* Useful in a spin lock to pause */
 #define pause() asm volatile("pause" ::: "memory")
 

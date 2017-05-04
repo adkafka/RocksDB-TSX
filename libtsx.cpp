@@ -8,7 +8,8 @@
 #include <limits.h> //INT_MAX
 #include <condition_variable> //condvar class
 
-#include <immintrin.h>
+#include <immintrin.h> //TSX RTM funcs and defs
+
 #include "spin_lock.hpp"
 
 /* How many aborts until we use fall-back lock */
@@ -21,15 +22,6 @@
 
 #define CACHE_SIZE 64
 #define CACHE_ALIGNED __attribute__((aligned(CACHE_SIZE)))
-
-
-__attribute__((constructor))
-void init(void) { 
-}
-
-__attribute__((destructor))
-void fini(void) { 
-}
 
 /* Stat tracking */
 class TLS_attributes{
@@ -112,7 +104,7 @@ class OnCommit{
         unsigned funcs_len;
 } CACHE_ALIGNED;
 
-/* More anonymous storage */
+/* Anonymous storage */
 namespace {
     thread_local OnCommit on_commit_list;
 }

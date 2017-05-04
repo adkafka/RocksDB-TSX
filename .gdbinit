@@ -1,4 +1,4 @@
-set env LD_PRELOAD ./libtsx.so
+set env LD_PRELOAD ./libspin.so
 file ./rocksdb/db_bench 
 
 set breakpoint pending on
