@@ -23,40 +23,6 @@
 #define CACHE_SIZE 64
 #define CACHE_ALIGNED __attribute__((aligned(CACHE_SIZE)))
 
-/* Stat tracking */
-class TLS_attributes{
-    public:
-        int locks, attempts, exp, ret, con, cap, deb, nest, fbl, other;
-        int fut_w, fut_s, fut_b, calb;
-        TLS_attributes(){
-            locks=0, attempts=0; exp=0; ret=0; con=0; cap=0; deb=0; nest=0; fbl=0; other=0;
-            fut_w=0,fut_s=0;fut_b=0;calb=0;
-        }
-        ~TLS_attributes(){
-            /*
-            printf("Locks called:\t%d\nFallbacks:\t%d\n",locks,fbl);
-            printf("Thread_local aborts: \n\
-                    Locks:\t%d\n\
-                    Attempts:\t%d\n\
-                    Explicit:\t%d\n\
-                    Retry:\t%d\n\
-                    Conflict:\t%d\n\
-                    Capacity:\t%d\n\
-                    Debug:\t%d\n\
-                    Nested:\t%d\n\
-                    Other:\t%d\n\
-                    Fallback:\t%d\n",
-                    locks,attempts,exp,ret,con,cap,deb,nest,other,fbl);
-            printf("Cond_Var usage: \n\
-                    Waits:\t%d\n\
-                    Signals:\t%d\n\
-                    Bcasts:\t%d\n\
-                    Callback:\t%d\n",
-                    fut_w,fut_s,fut_b,calb);
-                    */
-        }
-} CACHE_ALIGNED;
-
 /** OnCommit Section **/
 class FuncArg{
     public:
