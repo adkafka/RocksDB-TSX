@@ -41,8 +41,8 @@ class TLS_attributes{
             fut_w=0,fut_s=0;fut_b=0;calb=0;
         }
         ~TLS_attributes(){
-            //printf("Locks called:\t%d\nFallbacks:\t%d\n",locks,fbl);
             /*
+            printf("Locks called:\t%d\nFallbacks:\t%d\n",locks,fbl);
             printf("Thread_local aborts: \n\
                     Locks:\t%d\n\
                     Attempts:\t%d\n\
@@ -114,7 +114,6 @@ class OnCommit{
 
 /* More anonymous storage */
 namespace {
-    thread_local TLS_attributes stats;
     thread_local OnCommit on_commit_list;
 }
 
@@ -129,11 +128,9 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
     unsigned status;
     unsigned retry = NUM_RETRIES_OTHER;
 
-    stats.locks++;
 
     for (i = 0; i < retry; i++) {
         if ((status = _xbegin()) == _XBEGIN_STARTED) {
-            stats.attempts++;
             /* If lock is not held, we succesfully started a transaction */
             if (!lock->held())
                 return 0;
@@ -141,40 +138,27 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
              * back to the _xbegin() call */
             _xabort(0xff);
         }
-        stats.attempts++;
         /* If we explicitly aborted, someone has the lock */
         if ((status & _XABORT_EXPLICIT) && _XABORT_CODE(status) == 0xff) {
             lock->spin_until_free();
-            stats.exp++;
         } 
-        /* Retry */
-        if (status & _XABORT_RETRY){
-            stats.ret++;
-        }
-        /* Conflict */
-        if (status & _XABORT_CONFLICT) {
-            stats.con++;
-        }
-        /* Capacity */
-        if (status & _XABORT_CAPACITY) {
-            stats.cap++;
-        }
-        /* Nested fail*/
-        if (status & _XABORT_NESTED) {
-            stats.nest++;
-        } 
-        /* Debug */
-        if (status & _XABORT_DEBUG){
-            stats.deb++;
-        }
-        if (status == 0){
-            stats.other++;
+        /* If both retry AND capacity are not set, fall back */
+        else if (!(status & _XABORT_RETRY) && !(status & _XABORT_CAPACITY)){
             break;
+        }
+
+        /* Conflict (and retry or cap) */
+        if (status & _XABORT_CONFLICT) {
+            retry = NUM_RETRIES_CONFLICT;
+            lock->spin_until_free();
+        }
+        /* Capacity (maybe retry as well) */
+        else if (status & _XABORT_CAPACITY) {
+            retry = NUM_RETRIES_CAPACITY;
         }
     }
 
     /* All else failed, use fall-back lock */
-    stats.fbl++;
     lock->acquire();
 
     return 0;
@@ -183,14 +167,17 @@ int pthread_mutex_lock(pthread_mutex_t * mutex){
 #undef pthread_mutex_unlock
 int pthread_mutex_unlock(pthread_mutex_t * mutex){
     spin_lock* lock = reinterpret_cast<spin_lock*>(mutex);
+
     /* If no one has the fall-back lock, we can end the transaction */
-    if(!lock->held())
+    if(!lock->held()){
         _xend();
+        on_commit_list.RunAll();
+    }
+
     /* If someone has the lock, it must be us, so we release */
     else
         lock->release();
 
-    on_commit_list.RunAll();
 
     return 0;
 }
@@ -259,16 +246,13 @@ int futex_wake(std::atomic<int> *addr, int nr) {
 }
 void futex_signal(void* arg) {
     auto addr = reinterpret_cast<std::atomic<int>*>(arg);
-    stats.fut_s++;
     futex_wake(addr, 1);
 }
 void futex_broadcast(void* arg) {
     auto addr = reinterpret_cast<std::atomic<int>*>(arg);
-    stats.fut_b++;
     futex_wake(addr, INT_MAX);
 }
 int futex_wait(std::atomic<int> *addr, int val, const struct timespec *to) {
-    stats.fut_w++;
     return sys_futex(addr, FUTEX_WAIT_PRIVATE, val, to, NULL, 0);
 }
 
@@ -283,14 +267,12 @@ std::condition_variable::~condition_variable(){
 
 void std::condition_variable::notify_all(){
     auto fut = reinterpret_cast<std::atomic<int>*>(this);
-    stats.calb++;
     (*fut)++;
     on_commit_list.Add(futex_broadcast,fut);
 }
 
 void std::condition_variable::notify_one(){
     auto fut = reinterpret_cast<std::atomic<int>*>(this);
-    stats.calb++;
     (*fut)++;
     on_commit_list.Add(futex_signal,fut);
 }
@@ -318,7 +300,6 @@ int pthread_cond_destroy(pthread_cond_t * cond){ return 0;}
 #undef pthread_cond_broadcast
 int pthread_cond_broadcast(pthread_cond_t * cond){
     auto fut = reinterpret_cast<std::atomic<int>*>(cond);
-    stats.calb++;
     (*fut)++;
     on_commit_list.Add(futex_broadcast,fut);
     return 0;
@@ -327,7 +308,6 @@ int pthread_cond_broadcast(pthread_cond_t * cond){
 #undef pthread_cond_signal
 int pthread_cond_signal(pthread_cond_t * cond){
     auto fut = reinterpret_cast<std::atomic<int>*>(cond);
-    stats.calb++;
     (*fut)++;
     on_commit_list.Add(futex_signal,fut);
     return 0;
